@@ -4,6 +4,7 @@ import { evaluateAllMasks } from './js/engine.js';
 import { JacksOrBetter } from './js/games/jacksOrBetter.js';
 import { DeucesWild } from './js/games/deucesWild.js';
 import { JokerPoker } from './js/games/jokerPoker.js';
+import { DoubleDoubleBonus } from './js/games/doubleDoubleBonus.js';
 
 const WILD = -1;
 let failures = 0;
@@ -14,7 +15,7 @@ function check(label, cond) {
 function approx(a, b, eps = 1e-9) { return Math.abs(a - b) < eps; }
 
 // rank helpers: 0=Deuce..8=Ten,9=Jack,10=Queen,11=King,12=Ace ; suit: 0=c,1=d,2=h,3=s
-const T = 8, J = 9, Q = 10, K = 11, A = 12;
+const D2 = 0, D3 = 1, D4 = 2, D5 = 3, N9 = 7, T = 8, J = 9, Q = 10, K = 11, A = 12;
 
 console.log('=== Jacks or Better ===');
 {
@@ -167,6 +168,91 @@ console.log('\n=== Joker Poker ===');
     const holdJokerPair = masks[0b11100];
     check(`joker+pair draw: hold Joker+5c+5d EV ${holdJokerPair.ev} matches independent Python 4.023049645390071`, approx(holdJokerPair.ev, 4.023049645390071, 1e-9));
     check(`joker+pair draw: total draws is C(48,2)=1128 (${holdJokerPair.total})`, holdJokerPair.total === 1128);
+}
+
+console.log('\n=== Double Double Bonus ===');
+{
+    // pat natural royal flush
+    const dealt = [makeCard(T, 3), makeCard(J, 3), makeCard(Q, 3), makeCard(K, 3), makeCard(A, 3)];
+    const { bestMask, bestEv } = evaluateAllMasks(DoubleDoubleBonus, dealt, DoubleDoubleBonus.defaultPayouts);
+    check('natural royal: best mask is hold-all (31)', bestMask === 31);
+    check('natural royal: EV is exactly 800', approx(bestEv, 800));
+}
+{
+    // pat straight flush
+    const dealt = [makeCard(4, 0), makeCard(5, 0), makeCard(6, 0), makeCard(7, 0), makeCard(8, 0)];
+    const { bestMask, bestEv } = evaluateAllMasks(DoubleDoubleBonus, dealt, DoubleDoubleBonus.defaultPayouts);
+    check('straight flush: best mask is hold-all (31)', bestMask === 31);
+    check('straight flush: EV is exactly 50', approx(bestEv, 50));
+}
+{
+    // Four Aces + a QUALIFYING kicker (Deuce, <=Four) -- already at the max reachable
+    // outcome (no 5-of-a-kind exists in a standard deck), so holding pat IS optimal here,
+    // unlike the non-qualifying-kicker case below.
+    const dealt = [makeCard(A, 0), makeCard(A, 1), makeCard(A, 2), makeCard(A, 3), makeCard(D2, 0)];
+    const { bestMask, bestEv } = evaluateAllMasks(DoubleDoubleBonus, dealt, DoubleDoubleBonus.defaultPayouts);
+    check('four aces + qualifying kicker: best mask is hold-all (31)', bestMask === 31);
+    check('four aces + qualifying kicker: EV is exactly 400 (FOUR_ACES_W_KICKER)', approx(bestEv, 400));
+}
+{
+    // Four Aces + a NON-qualifying kicker (King) -- this is the classic DDB strategy quirk:
+    // discarding the king for a fresh draw is a free shot at the kicker bonus (any of the
+    // twelve 2s/3s/4s left in the deck upgrades 160 -> 400, everything else stays at 160),
+    // so it strictly beats holding pat. EV of "hold four aces, draw 1" is hand-derived here
+    // (not just self-consistency): 12 qualifying cards pay 400, the other 35 pay 160, of 47.
+    const dealt = [makeCard(A, 0), makeCard(A, 1), makeCard(A, 2), makeCard(A, 3), makeCard(K, 0)];
+    const { masks, bestEv } = evaluateAllMasks(DoubleDoubleBonus, dealt, DoubleDoubleBonus.defaultPayouts);
+    check('four aces + king kicker: holding all 5 pays exactly 160 (FOUR_ACES, no bonus)', approx(masks[31].ev, 160));
+    const holdAcesOnly = masks[0b11110]; // hold the 4 aces (first 4 cards), discard the king
+    const expected = (12 * 400 + 35 * 160) / 47;
+    check(`four aces + king kicker: discard-king EV ${holdAcesOnly.ev.toFixed(6)} matches hand-derived ${expected.toFixed(6)}`, approx(holdAcesOnly.ev, expected, 1e-9));
+    check('four aces + king kicker: discarding the king beats holding pat', approx(bestEv, holdAcesOnly.ev, 1e-9) && bestEv > masks[31].ev);
+}
+{
+    // Four 2s/3s/4s + a QUALIFYING kicker (Ace counts too, not just <=Four) -- also already
+    // at the max reachable for this quad rank, so holding pat is optimal.
+    const dealt = [makeCard(D4, 0), makeCard(D4, 1), makeCard(D4, 2), makeCard(D4, 3), makeCard(A, 0)];
+    const { bestMask, bestEv } = evaluateAllMasks(DoubleDoubleBonus, dealt, DoubleDoubleBonus.defaultPayouts);
+    check('four 4s + ace kicker: best mask is hold-all (31)', bestMask === 31);
+    check('four 4s + ace kicker: EV is exactly 160 (FOUR_234_W_KICKER)', approx(bestEv, 160));
+}
+{
+    // Four 2s/3s/4s + a NON-qualifying kicker (King) -- same free-lottery-ticket situation
+    // as four-aces-plus-king above, just at the lower 80/160 payout tier.
+    const dealt = [makeCard(D3, 0), makeCard(D3, 1), makeCard(D3, 2), makeCard(D3, 3), makeCard(K, 0)];
+    const { masks, bestEv } = evaluateAllMasks(DoubleDoubleBonus, dealt, DoubleDoubleBonus.defaultPayouts);
+    check('four 3s + king kicker: holding all 5 pays exactly 80 (FOUR_234, no bonus)', approx(masks[31].ev, 80));
+    check('four 3s + king kicker: best play redraws for a higher EV than holding pat', bestEv > masks[31].ev);
+}
+{
+    // Four 5-thru-King (no kicker sub-bonus exists at this tier -- payout is a flat 50
+    // regardless of the 5th card) -- holding pat ties with discarding the kicker, so we only
+    // check the EV, not which mask wins the tie (same reasoning as DeucesWild's four-deuces test).
+    const dealt = [makeCard(N9, 0), makeCard(N9, 1), makeCard(N9, 2), makeCard(N9, 3), makeCard(K, 0)];
+    const { bestEv } = evaluateAllMasks(DoubleDoubleBonus, dealt, DoubleDoubleBonus.defaultPayouts);
+    check('four 9s + king kicker: EV is exactly 50 (FOUR_5_THRU_K, flat)', approx(bestEv, 50));
+}
+{
+    // pat full house
+    const dealt = [makeCard(6, 0), makeCard(6, 1), makeCard(6, 2), makeCard(9, 3), makeCard(9, 0)];
+    const { bestMask, bestEv } = evaluateAllMasks(DoubleDoubleBonus, dealt, DoubleDoubleBonus.defaultPayouts);
+    check('full house: best mask is hold-all (31)', bestMask === 31);
+    check('full house: EV is exactly 9', approx(bestEv, 9));
+}
+{
+    // pair of Jacks (Jacks-or-better threshold) vs. pair of Nines (below threshold, pays
+    // nothing) -- both dealt as pat 2-pair-free hands with 3 unrelated kickers so the eval
+    // only exercises the single-pair JACKS_OR_BETTER branch, not two-pair or trips. Neither
+    // is a hand where holding pat is actually optimal (standard strategy discards the 3 dead
+    // kickers to draw toward trips/quads/a full house), so we check the pat classification
+    // (masks[31].ev) rather than bestMask, same reasoning as the weak made hands above.
+    const jacks = [makeCard(J, 0), makeCard(J, 1), makeCard(D2, 2), makeCard(D5, 3), makeCard(N9, 0)];
+    const { masks: jacksMasks } = evaluateAllMasks(DoubleDoubleBonus, jacks, DoubleDoubleBonus.defaultPayouts);
+    check('pair of jacks: holding all 5 pays exactly 1 (Jacks or Better)', approx(jacksMasks[31].ev, 1));
+
+    const nines = [makeCard(N9, 0), makeCard(N9, 1), makeCard(D2, 2), makeCard(D5, 3), makeCard(6, 0)];
+    const { masks: ninesMasks } = evaluateAllMasks(DoubleDoubleBonus, nines, DoubleDoubleBonus.defaultPayouts);
+    check('pair of nines (below jacks): holding all 5 pays exactly 0 (Nothing, not Jacks-or-Better)', approx(ninesMasks[31].ev, 0));
 }
 
 console.log(failures === 0 ? '\nAll checks passed.' : `\n${failures} check(s) FAILED.`);

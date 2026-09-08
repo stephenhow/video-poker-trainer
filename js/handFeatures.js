@@ -29,13 +29,13 @@ const F = {
     rankMask: [0, 0, 0, 0],
     rankCount: new Array(13).fill(0),
     jokerCnt: 0,
-    pairs: [], trips: [], quads: [],
+    pairs: [], trips: [], quads: [], kickers: [],
     unionMask: 0, maxSuitCnt: 0, maxSuit: -1, suitsCnt: 0, realCnt: 0,
 };
 
 export function extractFeatures(cards) {
     F.rankMask[0] = F.rankMask[1] = F.rankMask[2] = F.rankMask[3] = 0;
-    F.pairs.length = 0; F.trips.length = 0; F.quads.length = 0;
+    F.pairs.length = 0; F.trips.length = 0; F.quads.length = 0; F.kickers.length = 0;
     F.jokerCnt = 0;
     for (let r = 0; r < 13; r++) F.rankCount[r] = 0;
 
@@ -51,7 +51,9 @@ export function extractFeatures(cards) {
         if (n === 2) F.pairs.push(r);
         else if (n === 3) F.trips.push(r);
         else if (n === 4) F.quads.push(r);
+        else if (n === 1) F.kickers.push(r);
     }
+    F.kickers.sort((a, b) => b - a); // highest rank first, mirroring the C++ engine's kickers vector
     F.unionMask = F.rankMask[0] | F.rankMask[1] | F.rankMask[2] | F.rankMask[3];
     F.maxSuitCnt = 0; F.maxSuit = -1; F.suitsCnt = 0;
     for (let s = 0; s < 4; s++) {
@@ -71,6 +73,8 @@ export function pairRank(f, i = 0) { return f.pairs[i]; }
 export function tripRank(f) { return f.trips[0]; }
 export function quadRank(f) { return f.quads[0]; }
 export function hasRank(f, r) { return ((f.unionMask >> r) & 1) === 1; }
+export function hasKicker(f) { return f.kickers.length > 0; }
+export function kickerRank(f, i = 0) { return f.kickers[i]; }
 
 // exactly n of the 5 royal ranks (T,J,Q,K,A) present in some ONE suit
 export function isNRoyal(f, n) {
