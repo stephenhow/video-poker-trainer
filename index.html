@@ -32,9 +32,16 @@
         </aside>
 
         <main>
+            <div id="credit-meter">CREDITS <span id="credit-meter-value">0.00</span></div>
+
             <div id="hand-area">
-                <div id="cards"></div>
-                <div id="hold-labels"></div>
+                <div class="row-label">Your hand <span class="hint">(click a card to hold it)</span></div>
+                <div id="selector-cards" class="card-row"></div>
+
+                <div class="row-label">Play <span class="hint">(held + drawn)</span></div>
+                <div id="play-cards" class="card-row"></div>
+
+                <div id="outcome-banner" class="hidden"></div>
             </div>
 
             <div id="controls">
@@ -53,9 +60,10 @@
     </div>
 
     <footer>
-        <p>Click a card to hold/discard it, then press Draw. Every one of the 32 possible
-           hold decisions is evaluated by brute-force enumeration of every possible draw --
-           the feedback shows the true mathematically optimal play, not a heuristic.</p>
+        <p>Click a card in "Your hand" to hold/discard it, then press Draw. Every one of the
+           32 possible hold decisions is evaluated by brute-force enumeration of every
+           possible draw -- the feedback shows the true mathematically optimal play, not a
+           heuristic.</p>
     </footer>
 </div>
 <script type="module" src="js/main.js"></script>
