@@ -80,7 +80,7 @@ function makeCardDiv(card, { held = false, isBack = false, drawn = false, intera
     if (isBack) {
         div.setAttribute('aria-label', 'face-down card');
     } else {
-        div.innerHTML = cardHtml(card) + (drawn ? '<span class="badge">drawn</span>' : '');
+        div.innerHTML = cardHtml(card, game.wildLabel) + (drawn ? '<span class="badge">drawn</span>' : '');
         div.setAttribute('aria-label', (isWild(card) ? 'Wild' : cardStr(card)) + (held ? ', held' : ''));
     }
     if (interactive) {
@@ -207,7 +207,7 @@ function doDraw() {
 function describeMask(mask) {
     const cards = applyMask(dealt, mask);
     if (cards.length === 0) return 'nothing (discard all)';
-    return cards.map(c => cardHtml(c)).join(' ');
+    return cards.map(c => cardHtml(c, game.wildLabel)).join(' ');
 }
 
 function renderMaskTable(masks, bestMask, yourMask) {

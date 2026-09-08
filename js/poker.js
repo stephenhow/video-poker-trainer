@@ -20,8 +20,12 @@ export function cardStr(card) {
     return RANK_CHARS[rankOf(card)] + SUIT_CHARS[suitOf(card)];
 }
 
-export function cardHtml(card) {
-    if (isWild(card)) return '<span class="rank">2</span><span class="suit wild">Wild</span>';
+// `wildLabel` lets each game say what its wild card actually represents: a wild deuce
+// (Deuces Wild: rank "2", so it reads like a real card that happens to be wild) vs. an
+// actual joker (games with a real Joker card: no rank, just "Wild"). Defaults to the
+// joker case.
+export function cardHtml(card, wildLabel = { rank: '', suit: 'Wild' }) {
+    if (isWild(card)) return `<span class="rank">${wildLabel.rank}</span><span class="suit wild">${wildLabel.suit}</span>`;
     const suit = suitOf(card);
     const red = (suit === 1 || suit === 2);
     return `<span class="rank">${RANK_CHARS[rankOf(card)]}</span><span class="suit${red ? ' red' : ''}">${SUIT_SYMBOLS[suit]}</span>`;
