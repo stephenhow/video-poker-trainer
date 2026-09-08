@@ -1,5 +1,5 @@
 import { deucesWildDeck } from '../poker.js';
-import { isNRoyal, isNStraight, quadsCnt, tripsCnt, pairsCnt } from '../handFeatures.js';
+import { isNRoyal, isNStraight, isNSuitedStraight, quadsCnt, tripsCnt, pairsCnt } from '../handFeatures.js';
 
 // Rank order matches the C++ engine's DeucesWildPayTable enum.
 const RANKS = ['Nothing', 'Three of a Kind', 'Straight', 'Flush', 'Full House', 'Four of a Kind',
@@ -14,7 +14,7 @@ const NOTHING = 0, THREE_OF_A_KIND = 1, STRAIGHT = 2, FLUSH = 3, FULL_HOUSE = 4,
 
 function rank0Deuces(f) {
     if (isNRoyal(f, 5)) return NATURAL_ROYAL;
-    if (isNStraight(f, 5)) return STRAIGHT_FLUSH; // note: isSF() with jokerCnt=0 == isNSuitedStraight(5), same as this for a 5-real-card suited hand
+    if (isNSuitedStraight(f, 5)) return STRAIGHT_FLUSH;
     if (quadsCnt(f)) return FOUR_OF_A_KIND;
     if (tripsCnt(f) === 1 && pairsCnt(f) === 1) return FULL_HOUSE;
     if (f.maxSuitCnt === 5) return FLUSH;

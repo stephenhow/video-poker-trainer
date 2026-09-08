@@ -74,6 +74,20 @@ console.log('\n=== Deuces Wild ===');
     check('1-deuce wild royal: best mask is hold-all (31)', bestMask === 31);
     check('1-deuce wild royal: EV is exactly 25', approx(bestEv, 25));
 }
+{
+    // Regression test: rank0Deuces() once used isNStraight (any 5 ranks forming a straight,
+    // regardless of suit) where it should use isNSuitedStraight (same suit too), so a 0-wild
+    // draw completing a mixed-suit straight was misclassified as a straight flush. Holding
+    // Td 9h Qh (2 hearts + 1 diamond -- NOT suited) and discarding 6h 4c: independently
+    // verified (separate from-scratch Python enumeration of all 1081 draws) at EV=0.200740...;
+    // "discard all" is the actual best play here at ~0.317, matching a third-party reference
+    // Deuces Wild trainer's numbers for this exact hand.
+    const dealt = [makeCard(T, 1), makeCard(7, 2), makeCard(Q, 2), makeCard(4, 2), makeCard(2, 0)];
+    const { masks, bestMask } = evaluateAllMasks(DeucesWild, dealt, DeucesWild.defaultPayouts);
+    const holdT9Q = masks[0b11100];
+    check(`mixed-suit straight draw: hold T-9-Q EV ${holdT9Q.ev.toFixed(6)} matches independent 0.200740`, approx(holdT9Q.ev, 0.20074005550416282, 1e-9));
+    check('mixed-suit straight draw: best play is discard-all, not hold T-9-Q', bestMask !== 0b11100);
+}
 
 console.log(failures === 0 ? '\nAll checks passed.' : `\n${failures} check(s) FAILED.`);
 process.exit(failures === 0 ? 0 : 1);
