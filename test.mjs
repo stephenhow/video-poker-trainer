@@ -5,6 +5,7 @@ import { JacksOrBetter } from './js/games/jacksOrBetter.js';
 import { DeucesWild } from './js/games/deucesWild.js';
 import { JokerPoker } from './js/games/jokerPoker.js';
 import { DoubleDoubleBonus } from './js/games/doubleDoubleBonus.js';
+import { SuperAcesBonus } from './js/games/superAcesBonus.js';
 
 const WILD = -1;
 let failures = 0;
@@ -252,6 +253,82 @@ console.log('\n=== Double Double Bonus ===');
 
     const nines = [makeCard(N9, 0), makeCard(N9, 1), makeCard(D2, 2), makeCard(D5, 3), makeCard(6, 0)];
     const { masks: ninesMasks } = evaluateAllMasks(DoubleDoubleBonus, nines, DoubleDoubleBonus.defaultPayouts);
+    check('pair of nines (below jacks): holding all 5 pays exactly 0 (Nothing, not Jacks-or-Better)', approx(ninesMasks[31].ev, 0));
+}
+
+console.log('\n=== Super Aces Bonus ===');
+{
+    // pat natural royal flush
+    const dealt = [makeCard(T, 3), makeCard(J, 3), makeCard(Q, 3), makeCard(K, 3), makeCard(A, 3)];
+    const { bestMask, bestEv } = evaluateAllMasks(SuperAcesBonus, dealt, SuperAcesBonus.defaultPayouts);
+    check('natural royal: best mask is hold-all (31)', bestMask === 31);
+    check('natural royal: EV is exactly 800', approx(bestEv, 800));
+}
+{
+    // pat straight flush
+    const dealt = [makeCard(4, 0), makeCard(5, 0), makeCard(6, 0), makeCard(7, 0), makeCard(8, 0)];
+    const { bestMask, bestEv } = evaluateAllMasks(SuperAcesBonus, dealt, SuperAcesBonus.defaultPayouts);
+    check('straight flush: best mask is hold-all (31)', bestMask === 31);
+    check('straight flush: EV is exactly 60', approx(bestEv, 60));
+}
+{
+    // Unlike Double Double Bonus, Super Aces has NO kicker sub-bonus at any quad tier -- the
+    // payout for a given quad rank is completely flat regardless of the 5th card. That means
+    // holding pat and discarding-the-kicker-to-redraw are an exact TIE (the redraw can only
+    // ever land on "same quad rank, different kicker", which pays identically), so we check
+    // only the EV here, not which mask wins the tie (same reasoning as DeucesWild's
+    // four-deuces test and Double Double Bonus's four-9s-thru-king test).
+    const aces = [makeCard(A, 0), makeCard(A, 1), makeCard(A, 2), makeCard(A, 3), makeCard(K, 0)];
+    const { bestEv: acesEv } = evaluateAllMasks(SuperAcesBonus, aces, SuperAcesBonus.defaultPayouts);
+    check('four aces: EV is exactly 400 (FOUR_ACES, no kicker bonus in this game)', approx(acesEv, 400));
+
+    const low = [makeCard(D4, 0), makeCard(D4, 1), makeCard(D4, 2), makeCard(D4, 3), makeCard(K, 0)];
+    const { bestEv: lowEv } = evaluateAllMasks(SuperAcesBonus, low, SuperAcesBonus.defaultPayouts);
+    check('four 4s: EV is exactly 80 (FOUR_234)', approx(lowEv, 80));
+
+    const mid = [makeCard(N9, 0), makeCard(N9, 1), makeCard(N9, 2), makeCard(N9, 3), makeCard(K, 0)];
+    const { bestEv: midEv } = evaluateAllMasks(SuperAcesBonus, mid, SuperAcesBonus.defaultPayouts);
+    check('four 9s: EV is exactly 50 (FOUR_5_THRU_K)', approx(midEv, 50));
+}
+{
+    // pat full house and pat flush -- both genuinely optimal to hold (standard strategy never
+    // breaks either), unlike the quad-with-dead-kicker and weak-pair cases below.
+    const fullHouse = [makeCard(6, 0), makeCard(6, 1), makeCard(6, 2), makeCard(9, 3), makeCard(9, 0)];
+    const { bestMask: fhMask, bestEv: fhEv } = evaluateAllMasks(SuperAcesBonus, fullHouse, SuperAcesBonus.defaultPayouts);
+    check('full house: best mask is hold-all (31)', fhMask === 31);
+    check('full house: EV is exactly 6', approx(fhEv, 6));
+
+    const flush = [makeCard(D2, 0), makeCard(D5, 0), makeCard(N9, 0), makeCard(J, 0), makeCard(K, 0)];
+    const { bestMask: flMask, bestEv: flEv } = evaluateAllMasks(SuperAcesBonus, flush, SuperAcesBonus.defaultPayouts);
+    check('flush: best mask is hold-all (31)', flMask === 31);
+    check('flush: EV is exactly 5', approx(flEv, 5));
+
+    const straight = [makeCard(2, 0), makeCard(3, 1), makeCard(4, 2), makeCard(5, 3), makeCard(6, 0)];
+    const { bestMask: strMask, bestEv: strEv } = evaluateAllMasks(SuperAcesBonus, straight, SuperAcesBonus.defaultPayouts);
+    check('straight: best mask is hold-all (31)', strMask === 31);
+    check('straight: EV is exactly 4', approx(strEv, 4));
+}
+{
+    // Two pair including Aces -- a genuine Super-Aces-specific strategy quirk: because Four
+    // Aces pays so disproportionately high (400) relative to the other categories, the best
+    // play is actually to hold ONLY the Aces pair and discard everything else (including the
+    // other made pair!), chasing quad aces. So -- same as the weak-hand cases in Joker Poker
+    // and Double Double Bonus -- we check the pat classification (masks[31].ev), not bestMask.
+    const dealt = [makeCard(A, 0), makeCard(A, 1), makeCard(6, 2), makeCard(6, 3), makeCard(N9, 0)];
+    const { masks, bestEv } = evaluateAllMasks(SuperAcesBonus, dealt, SuperAcesBonus.defaultPayouts);
+    check('two pair (incl. aces): holding all 5 pays exactly 1 (Two Pair)', approx(masks[31].ev, 1));
+    check('two pair (incl. aces): best play (hold aces only) beats holding pat', bestEv > masks[31].ev);
+}
+{
+    // pair of Jacks vs. pair of Nines (below threshold) -- same weak-made-hand reasoning as
+    // Double Double Bonus: standard strategy discards the 3 dead kickers rather than holding
+    // pat, so check the pat classification only.
+    const jacks = [makeCard(J, 0), makeCard(J, 1), makeCard(D2, 2), makeCard(D5, 3), makeCard(N9, 0)];
+    const { masks: jacksMasks } = evaluateAllMasks(SuperAcesBonus, jacks, SuperAcesBonus.defaultPayouts);
+    check('pair of jacks: holding all 5 pays exactly 1 (Jacks or Better)', approx(jacksMasks[31].ev, 1));
+
+    const nines = [makeCard(N9, 0), makeCard(N9, 1), makeCard(D2, 2), makeCard(D5, 3), makeCard(6, 0)];
+    const { masks: ninesMasks } = evaluateAllMasks(SuperAcesBonus, nines, SuperAcesBonus.defaultPayouts);
     check('pair of nines (below jacks): holding all 5 pays exactly 0 (Nothing, not Jacks-or-Better)', approx(ninesMasks[31].ev, 0));
 }
 
