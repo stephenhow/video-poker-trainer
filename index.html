@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Video Poker Trainer</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="app">
+    <header>
+        <h1>Video Poker Trainer</h1>
+        <div class="header-controls">
+            <label for="game-select">Game</label>
+            <select id="game-select"></select>
+        </div>
+    </header>
+
+    <div class="main-layout">
+        <aside id="paytable-panel">
+            <h2>Pay Table <span class="hint">(edit to try a different schedule)</span></h2>
+            <table id="paytable"></table>
+            <div class="stats">
+                <h2>Session</h2>
+                <div class="stat-row"><span>Hands played</span><span id="stat-hands">0</span></div>
+                <div class="stat-row"><span>Optimal plays</span><span id="stat-optimal">0</span></div>
+                <div class="stat-row"><span>Accuracy</span><span id="stat-accuracy">&mdash;</span></div>
+                <div class="stat-row"><span>EV given up</span><span id="stat-evlost">0.000</span></div>
+                <div class="stat-row"><span>Credits</span><span id="stat-credits">0</span></div>
+                <button id="reset-stats">Reset session</button>
+            </div>
+        </aside>
+
+        <main>
+            <div id="hand-area">
+                <div id="cards"></div>
+                <div id="hold-labels"></div>
+            </div>
+
+            <div id="controls">
+                <button id="deal-btn">Deal</button>
+                <button id="draw-btn" disabled>Draw</button>
+            </div>
+
+            <div id="feedback" class="hidden">
+                <div id="feedback-headline"></div>
+                <div id="feedback-detail"></div>
+                <div id="mask-table-wrap">
+                    <table id="mask-table"></table>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <footer>
+        <p>Click a card to hold/discard it, then press Draw. Every one of the 32 possible
+           hold decisions is evaluated by brute-force enumeration of every possible draw --
+           the feedback shows the true mathematically optimal play, not a heuristic.</p>
+    </footer>
+</div>
+<script type="module" src="js/main.js"></script>
+</body>
+</html>

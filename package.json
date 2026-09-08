@@ -1,0 +1,7 @@
+{
+  "name": "video-poker-trainer",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Browser-based practice trainer for video poker variants -- deals a hand, computes the true optimal play by brute force, and scores your decision against it."
+}
