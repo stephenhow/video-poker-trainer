@@ -21,7 +21,7 @@ export function cardStr(card) {
 }
 
 export function cardHtml(card) {
-    if (isWild(card)) return '<span class="rank">JOKER</span>';
+    if (isWild(card)) return '<span class="rank">2</span><span class="suit wild">Wild</span>';
     const suit = suitOf(card);
     const red = (suit === 1 || suit === 2);
     return `<span class="rank">${RANK_CHARS[rankOf(card)]}</span><span class="suit${red ? ' red' : ''}">${SUIT_SYMBOLS[suit]}</span>`;

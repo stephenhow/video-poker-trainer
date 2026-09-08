@@ -57,6 +57,7 @@ function switchGame(index) {
     payouts = game.defaultPayouts.slice();
     renderPaytable();
     resetHand();
+    resetStats();
 }
 
 function resetHand() {
@@ -80,7 +81,7 @@ function makeCardDiv(card, { held = false, isBack = false, drawn = false, intera
         div.setAttribute('aria-label', 'face-down card');
     } else {
         div.innerHTML = cardHtml(card) + (drawn ? '<span class="badge">drawn</span>' : '');
-        div.setAttribute('aria-label', (isWild(card) ? 'Joker' : cardStr(card)) + (held ? ', held' : ''));
+        div.setAttribute('aria-label', (isWild(card) ? 'Wild' : cardStr(card)) + (held ? ', held' : ''));
     }
     if (interactive) {
         div.setAttribute('role', 'button');
