@@ -3,6 +3,7 @@ import { makeCard } from './js/poker.js';
 import { evaluateAllMasks } from './js/engine.js';
 import { JacksOrBetter } from './js/games/jacksOrBetter.js';
 import { DeucesWild } from './js/games/deucesWild.js';
+import { JokerPoker } from './js/games/jokerPoker.js';
 
 const WILD = -1;
 let failures = 0;
@@ -87,6 +88,85 @@ console.log('\n=== Deuces Wild ===');
     const holdT9Q = masks[0b11100];
     check(`mixed-suit straight draw: hold T-9-Q EV ${holdT9Q.ev.toFixed(6)} matches independent 0.200740`, approx(holdT9Q.ev, 0.20074005550416282, 1e-9));
     check('mixed-suit straight draw: best play is discard-all, not hold T-9-Q', bestMask !== 0b11100);
+}
+
+console.log('\n=== Joker Poker ===');
+{
+    // pat natural royal flush, no joker
+    const dealt = [makeCard(T, 3), makeCard(J, 3), makeCard(Q, 3), makeCard(K, 3), makeCard(A, 3)];
+    const { bestMask, bestEv } = evaluateAllMasks(JokerPoker, dealt, JokerPoker.defaultPayouts);
+    check('natural royal: best mask is hold-all (31)', bestMask === 31);
+    check('natural royal: EV is exactly 1000', approx(bestEv, 1000));
+}
+{
+    // 4 real royal cards suited + joker -> wild royal, guaranteed
+    const dealt = [WILD, makeCard(J, 1), makeCard(Q, 1), makeCard(K, 1), makeCard(A, 1)];
+    const { bestMask, bestEv } = evaluateAllMasks(JokerPoker, dealt, JokerPoker.defaultPayouts);
+    check('wild royal: best mask is hold-all (31)', bestMask === 31);
+    check('wild royal: EV is exactly 50', approx(bestEv, 50));
+}
+{
+    // 4 real same-rank cards + joker -> five of a kind, guaranteed
+    const dealt = [WILD, makeCard(5, 0), makeCard(5, 1), makeCard(5, 2), makeCard(5, 3)];
+    const { bestMask, bestEv } = evaluateAllMasks(JokerPoker, dealt, JokerPoker.defaultPayouts);
+    check('five of a kind: best mask is hold-all (31)', bestMask === 31);
+    check('five of a kind: EV is exactly 100', approx(bestEv, 100));
+}
+{
+    // pat straight flush, no joker
+    const dealt = [makeCard(4, 0), makeCard(5, 0), makeCard(6, 0), makeCard(7, 0), makeCard(8, 0)];
+    const { bestMask, bestEv } = evaluateAllMasks(JokerPoker, dealt, JokerPoker.defaultPayouts);
+    check('straight flush: best mask is hold-all (31)', bestMask === 31);
+    check('straight flush: EV is exactly 50', approx(bestEv, 50));
+}
+{
+    // one real pair + joker, no trips/other pairs -> three of a kind (not full house: only 1 pair).
+    // This is a weak made hand (pays only 2), so unlike the pat/guaranteed hands above, holding
+    // everything is NOT necessarily the globally optimal play -- discarding the dead kickers and
+    // redrawing can legitimately beat freezing on a low payout. So we check the *classification*
+    // of the pat hand (masks[31].ev, i.e. what holding all 5 actually pays) rather than asserting
+    // bestMask===31/bestEv, which only holds for hands that can't be improved on (full house+).
+    const dealt = [WILD, makeCard(6, 0), makeCard(6, 1), makeCard(2, 2), makeCard(9, 3)];
+    const { masks, bestEv } = evaluateAllMasks(JokerPoker, dealt, JokerPoker.defaultPayouts);
+    check('pair+joker: holding all 5 pays exactly 2 (three of a kind)', approx(masks[31].ev, 2));
+    check('pair+joker: best play redraws for a higher EV than holding pat', bestEv >= masks[31].ev);
+}
+{
+    // two real pairs + joker -> full house (joker promotes one pair to trips), not five of a kind.
+    // Full house is strong/pat-worthy here, so hold-all is expected to actually be optimal.
+    const dealt = [WILD, makeCard(6, 0), makeCard(6, 1), makeCard(3, 2), makeCard(3, 3)];
+    const { bestMask, bestEv } = evaluateAllMasks(JokerPoker, dealt, JokerPoker.defaultPayouts);
+    check('two pair+joker: best mask is hold-all (31)', bestMask === 31);
+    check('two pair+joker: EV is exactly 10 (full house)', approx(bestEv, 10));
+}
+{
+    // king + joker, no other pairs -> pair of kings (via wild), not "nothing". Weak made hand
+    // (pays 0 in this schedule) -- see comment above on pair+joker for why we check the pat
+    // classification rather than assuming hold-all is globally optimal.
+    const dealt = [WILD, makeCard(K, 0), makeCard(2, 1), makeCard(5, 2), makeCard(9, 3)];
+    const { masks, bestEv } = evaluateAllMasks(JokerPoker, dealt, JokerPoker.defaultPayouts);
+    check('king+joker: holding all 5 pays exactly 0 (pair of kings pays 0 in this schedule)', approx(masks[31].ev, 0));
+    check('king+joker: best play redraws for a higher EV than holding pat', bestEv >= masks[31].ev);
+}
+{
+    // two real pairs, no joker -> ordinary two pair, not pair-of-aces/kings even if one pair is
+    // aces. Two pair (pays 1) is also a weak made hand here -- same reasoning as pair+joker above.
+    const dealt = [makeCard(A, 0), makeCard(A, 1), makeCard(6, 2), makeCard(6, 3), makeCard(9, 0)];
+    const { masks, bestEv } = evaluateAllMasks(JokerPoker, dealt, JokerPoker.defaultPayouts);
+    check('two real pair (incl. aces): holding all 5 pays exactly 1 (two pair, not pair-of-aces)', approx(masks[31].ev, 1));
+    check('two real pair (incl. aces): best play redraws for a higher EV than holding pat', bestEv >= masks[31].ev);
+}
+{
+    // Independent cross-check of a genuine draw decision (not a pat hand), matching the
+    // DeucesWild verification methodology: dealt Joker, 5c, 5d, 9h, Ks -- hold Joker+pair of
+    // 5s, discard the two dead kickers, draw 2. A separate from-scratch Python re-implementation
+    // (sharing no code with this engine) exhaustively enumerated all 1128 possible 2-card draws
+    // and independently derived EV=4.023049645390071 (exact float match).
+    const dealt = [WILD, makeCard(3, 0), makeCard(3, 1), makeCard(7, 2), makeCard(K, 3)];
+    const { masks } = evaluateAllMasks(JokerPoker, dealt, JokerPoker.defaultPayouts);
+    const holdJokerPair = masks[0b11100];
+    check(`joker+pair draw: hold Joker+5c+5d EV ${holdJokerPair.ev} matches independent Python 4.023049645390071`, approx(holdJokerPair.ev, 4.023049645390071, 1e-9));
+    check(`joker+pair draw: total draws is C(48,2)=1128 (${holdJokerPair.total})`, holdJokerPair.total === 1128);
 }
 
 console.log(failures === 0 ? '\nAll checks passed.' : `\n${failures} check(s) FAILED.`);

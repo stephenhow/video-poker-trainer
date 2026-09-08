@@ -50,6 +50,12 @@ export function deucesWildDeck() {
     return deck;
 }
 
+// Standard 52-card deck plus a single real Joker (mirrors the C++ engine's poker::JOKER_DECK)
+// -- for games with exactly one wild card, an actual joker rather than a wild rank.
+export function jokerDeck() {
+    return [...standardDeck(), WILD];
+}
+
 // Fisher-Yates shuffle (in place), returns the array for convenience.
 export function shuffle(arr) {
     for (let i = arr.length - 1; i > 0; i--) {

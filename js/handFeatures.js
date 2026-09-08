@@ -94,3 +94,46 @@ export function isNSuitedStraight(f, n) {
 export function isSF(f) { return isNSuitedStraight(f, 5 - f.jokerCnt); }
 
 export function isFlush(f) { return (f.maxSuitCnt + f.jokerCnt) === 5; }
+
+export function hasPair(f) { return f.pairs.length > 0; }
+
+// Five of a kind: n real cards of one rank + (5-n) wilds complete it.
+export function isQuints(f) {
+    switch (f.jokerCnt) {
+        case 4: return true;
+        case 3: return pairsCnt(f) > 0;
+        case 2: return tripsCnt(f) > 0;
+        case 1: return quadsCnt(f) > 0;
+        default: return false; // impossible with 0 wilds in a single deck
+    }
+}
+
+// Four of a kind, wildcard-aware.
+export function isQuads(f) {
+    switch (f.jokerCnt) {
+        case 4: return true;
+        case 3: return true;
+        case 2: return pairsCnt(f) > 0;
+        case 1: return tripsCnt(f) > 0;
+        default: return quadsCnt(f) > 0;
+    }
+}
+
+// Full house, wildcard-aware. (jokerCnt>=2 can't actually reach here in practice --
+// isQuints/isQuads already claim those hands earlier in any sane rank-priority order --
+// but the fallback is still correct if ever reached.)
+export function isFH(f) {
+    if (f.jokerCnt === 1) return pairsCnt(f) === 2;
+    return tripsCnt(f) > 0 && pairsCnt(f) > 0;
+}
+
+// Three of a kind, wildcard-aware. For jokerCnt===2, any one of the 3 real cards plus
+// both wilds always makes trips -- this is only reached when isQuads/isQuints (pair-of-
+// reals or trip-of-reals cases) have already been ruled out earlier in rank priority.
+export function is3K(f) {
+    switch (f.jokerCnt) {
+        case 2: return true;
+        case 1: return pairsCnt(f) > 0;
+        default: return tripsCnt(f) > 0;
+    }
+}
