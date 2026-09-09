@@ -6,6 +6,7 @@ import { BonusPokerDeluxe } from './js/games/bonusPokerDeluxe.js';
 import { DeucesWild } from './js/games/deucesWild.js';
 import { JokerPoker } from './js/games/jokerPoker.js';
 import { DoubleDoubleBonus } from './js/games/doubleDoubleBonus.js';
+import { TripleDoubleBonus } from './js/games/tripleDoubleBonus.js';
 import { SuperAcesBonus } from './js/games/superAcesBonus.js';
 import { OneEyedJacks } from './js/games/oneEyedJacks.js';
 import { cardStr, oneEyedJacksDeck, makeJoker, isJoker, jokerTag, isWild } from './js/poker.js';
@@ -307,6 +308,56 @@ console.log('\n=== Double Double Bonus ===');
     const nines = [makeCard(N9, 0), makeCard(N9, 1), makeCard(D2, 2), makeCard(D5, 3), makeCard(6, 0)];
     const { masks: ninesMasks } = evaluateAllMasks(DoubleDoubleBonus, nines, DoubleDoubleBonus.defaultPayouts);
     check('pair of nines (below jacks): holding all 5 pays exactly 0 (Nothing, not Jacks-or-Better)', approx(ninesMasks[31].ev, 0));
+}
+
+console.log('\n=== Triple Double Bonus ===');
+{
+    // Triple Double Bonus is Double Double Bonus with 3 payouts changed (Three of a Kind
+    // 3->2, Four 2s/3s/4s+kicker 160->400, Four Aces+kicker 400->800) -- confirm the schedule
+    // and that it's genuinely reusing DoubleDoubleBonus's deck/evalRank rather than a
+    // re-derived copy.
+    const dropChanged = (payouts, ranks) => payouts.map((v, i) =>
+        (['Three of a Kind', 'Four 2s, 3s or 4s + A-4 Kicker', 'Four Aces + 2-4 Kicker'].includes(ranks[i]) ? null : v));
+    check('payouts match Double Double Bonus except the 3 boosted categories',
+        JSON.stringify(dropChanged(TripleDoubleBonus.defaultPayouts, TripleDoubleBonus.ranks)) ===
+        JSON.stringify(dropChanged(DoubleDoubleBonus.defaultPayouts, DoubleDoubleBonus.ranks)));
+    check('Three of a Kind payout is 2 (not DDB\'s 3)', TripleDoubleBonus.defaultPayouts[TripleDoubleBonus.ranks.indexOf('Three of a Kind')] === 2);
+    check('Four 2s,3s,4s+kicker payout is 400 (not DDB\'s 160)', TripleDoubleBonus.defaultPayouts[TripleDoubleBonus.ranks.indexOf('Four 2s, 3s or 4s + A-4 Kicker')] === 400);
+    check('Four Aces+kicker payout is 800 (not DDB\'s 400)', TripleDoubleBonus.defaultPayouts[TripleDoubleBonus.ranks.indexOf('Four Aces + 2-4 Kicker')] === 800);
+    check('reuses DoubleDoubleBonus.evalRank directly', TripleDoubleBonus.evalRank === DoubleDoubleBonus.evalRank);
+    check('reuses DoubleDoubleBonus.deck directly', TripleDoubleBonus.deck === DoubleDoubleBonus.deck);
+    check('has no strategyPdf yet (none exists for this game)', TripleDoubleBonus.strategyPdf === undefined);
+}
+{
+    // Four Aces + a QUALIFYING kicker (Deuce) -- already at the max reachable outcome, so
+    // holding pat is optimal, same reasoning as Double Double Bonus's equivalent test.
+    const dealt = [makeCard(A, 0), makeCard(A, 1), makeCard(A, 2), makeCard(A, 3), makeCard(D2, 0)];
+    const { bestMask, bestEv } = evaluateAllMasks(TripleDoubleBonus, dealt, TripleDoubleBonus.defaultPayouts);
+    check('four aces + qualifying kicker: best mask is hold-all (31)', bestMask === 31);
+    check('four aces + qualifying kicker: EV is exactly 800 (up from DDB\'s 400)', approx(bestEv, 800));
+}
+{
+    // Four Aces + a NON-qualifying kicker (King) -- the classic kicker-chase quirk, now with
+    // an even bigger incentive to discard the kicker since the bonus doubled to 800.
+    const dealt = [makeCard(A, 0), makeCard(A, 1), makeCard(A, 2), makeCard(A, 3), makeCard(K, 0)];
+    const { masks, bestEv } = evaluateAllMasks(TripleDoubleBonus, dealt, TripleDoubleBonus.defaultPayouts);
+    check('four aces + king kicker: holding all 5 pays exactly 160 (FOUR_ACES, no bonus)', approx(masks[31].ev, 160));
+    check('four aces + king kicker: discarding the king beats holding pat', bestEv > masks[31].ev);
+}
+{
+    // Four 2s/3s/4s + a QUALIFYING kicker (Ace) -- also already maxed out, pat is optimal.
+    const dealt = [makeCard(D4, 0), makeCard(D4, 1), makeCard(D4, 2), makeCard(D4, 3), makeCard(A, 0)];
+    const { bestMask, bestEv } = evaluateAllMasks(TripleDoubleBonus, dealt, TripleDoubleBonus.defaultPayouts);
+    check('four 4s + ace kicker: best mask is hold-all (31)', bestMask === 31);
+    check('four 4s + ace kicker: EV is exactly 400 (up from DDB\'s 160)', approx(bestEv, 400));
+}
+{
+    // Three of a kind -- weak made hand at this schedule's reduced payout (2, down from DDB's
+    // 3), standard strategy breaks it to chase quads rather than holding pat.
+    const dealt = [makeCard(D2, 0), makeCard(D2, 1), makeCard(D2, 2), makeCard(D3, 3), makeCard(N9, 0)];
+    const { masks, bestEv } = evaluateAllMasks(TripleDoubleBonus, dealt, TripleDoubleBonus.defaultPayouts);
+    check('three of a kind: holding all 5 pays exactly 2', approx(masks[31].ev, 2));
+    check('three of a kind: best play redraws for a higher EV than holding pat', bestEv > masks[31].ev);
 }
 
 console.log('\n=== Super Aces Bonus ===');
