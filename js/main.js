@@ -41,7 +41,7 @@ function renderPaytable() {
         .map(i => `
             <tr>
                 <td>${game.ranks[i]}</td>
-                <td><input type="number" min="0" step="1" data-rank="${i}" value="${payouts[i]}"></td>
+                <td><input type="number" min="0" step="any" data-rank="${i}" value="${payouts[i]}"></td>
             </tr>`)
         .join('');
     paytableEl.querySelectorAll('input').forEach(inp => {

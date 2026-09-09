@@ -10,6 +10,9 @@ import { TripleDoubleBonus } from './js/games/tripleDoubleBonus.js';
 import { SuperAcesBonus } from './js/games/superAcesBonus.js';
 import { DoubleBonus } from './js/games/doubleBonus.js';
 import { OneEyedJacks } from './js/games/oneEyedJacks.js';
+import { WildJoker } from './js/games/wildJoker.js';
+import { Shamrock7 } from './js/games/shamrock7.js';
+import { extractFeatures } from './js/handFeatures.js';
 import { cardStr, oneEyedJacksDeck, makeJoker, isJoker, jokerTag, isWild } from './js/poker.js';
 
 const WILD = -1;
@@ -21,7 +24,7 @@ function check(label, cond) {
 function approx(a, b, eps = 1e-9) { return Math.abs(a - b) < eps; }
 
 // rank helpers: 0=Deuce..8=Ten,9=Jack,10=Queen,11=King,12=Ace ; suit: 0=c,1=d,2=h,3=s
-const D2 = 0, D3 = 1, D4 = 2, D5 = 3, N9 = 7, T = 8, J = 9, Q = 10, K = 11, A = 12;
+const D2 = 0, D3 = 1, D4 = 2, D5 = 3, N7 = 5, N9 = 7, T = 8, J = 9, Q = 10, K = 11, A = 12;
 
 console.log('=== Jacks or Better ===');
 {
@@ -589,6 +592,116 @@ const JOKER_S = makeJoker(3); // the joker tagged "spades" -- displays as a blac
     const { masks, bestEv } = evaluateAllMasks(OneEyedJacks, dealt, OneEyedJacks.defaultPayouts);
     check('two pair: holding all 5 pays exactly 1', approx(masks[31].ev, 1));
     check('two pair: best play redraws for a higher EV than holding pat', bestEv > masks[31].ev);
+}
+
+console.log('\n=== Wild Joker ===');
+{
+    check('has a strategyPdf pointing at wildJoker.pdf', WildJoker.strategyPdf?.href === 'wildJoker.pdf');
+    check('deck is the 53-card joker deck', WildJoker.deck().length === 53);
+}
+{
+    // joker + 4 real aces -> five of a kind, the progressive jackpot. Nothing beats it, so
+    // holding pat is genuinely optimal.
+    const dealt = [WILD, makeCard(A, 0), makeCard(A, 1), makeCard(A, 2), makeCard(A, 3)];
+    const { bestMask, bestEv } = evaluateAllMasks(WildJoker, dealt, WildJoker.defaultPayouts);
+    check('joker + 4 aces: best mask is hold-all (31)', bestMask === 31);
+    check('joker + 4 aces: EV is exactly 1140 (five of a kind jackpot)', approx(bestEv, 1140));
+}
+{
+    // Unlike Joker Poker, this game has no separate wild-royal category -- a royal made with
+    // the joker pays the same 100 as a natural one. Worth asserting, since it's the one place
+    // Wild Joker's rank logic differs from the otherwise-identical Joker Poker.
+    const natural = [makeCard(T, 3), makeCard(J, 3), makeCard(Q, 3), makeCard(K, 3), makeCard(A, 3)];
+    const { bestMask: natMask, bestEv: natEv } = evaluateAllMasks(WildJoker, natural, WildJoker.defaultPayouts);
+    check('natural royal: best mask is hold-all (31)', natMask === 31);
+    check('natural royal: EV is exactly 100', approx(natEv, 100));
+
+    const withJoker = [WILD, makeCard(J, 1), makeCard(Q, 1), makeCard(K, 1), makeCard(A, 1)];
+    const { bestMask: wildMask, bestEv: wildEv } = evaluateAllMasks(WildJoker, withJoker, WildJoker.defaultPayouts);
+    check('joker royal: best mask is hold-all (31)', wildMask === 31);
+    check('joker royal: EV is also exactly 100 (no separate wild-royal tier)', approx(wildEv, 100));
+}
+{
+    // Pair of aces is the minimum paying hand, reachable either naturally or via the joker.
+    // Weak made hand, so check the pat classification rather than assuming hold-all is best.
+    const natural = [makeCard(A, 0), makeCard(A, 1), makeCard(N7, 2), makeCard(N9, 3), makeCard(K, 0)];
+    const { masks: natMasks } = evaluateAllMasks(WildJoker, natural, WildJoker.defaultPayouts);
+    check('natural pair of aces: holding all 5 pays exactly 1', approx(natMasks[31].ev, 1));
+
+    const viaJoker = [WILD, makeCard(A, 0), makeCard(N7, 1), makeCard(N9, 2), makeCard(K, 3)];
+    const { masks: jokerMasks, bestEv } = evaluateAllMasks(WildJoker, viaJoker, WildJoker.defaultPayouts);
+    check('ace + joker: holding all 5 pays exactly 1 (pair of aces via the joker)', approx(jokerMasks[31].ev, 1));
+    check('ace + joker: best play redraws for a higher EV than holding pat', bestEv > jokerMasks[31].ev);
+}
+
+console.log('\n=== Shamrock 7s ===');
+{
+    check('has a strategyPdf pointing at shamrock7.pdf', Shamrock7.strategyPdf?.href === 'shamrock7.pdf');
+    check('deck is the 53-card joker deck', Shamrock7.deck().length === 53);
+
+    // Every sevens tier is its base category plus the flat 12.1 sevens bonus.
+    const pay = (name) => Shamrock7.defaultPayouts[Shamrock7.ranks.indexOf(name)];
+    const BONUS = 12.1;
+    check('Three Sevens = Three of a Kind + 12.1', approx(pay('Three Sevens') - pay('Three of a Kind'), BONUS));
+    check('Sevens Full = Full House + 12.1', approx(pay('Sevens Full') - pay('Full House'), BONUS));
+    check('Four Sevens = Four of a Kind + 12.1', approx(pay('Four Sevens') - pay('Four of a Kind'), BONUS));
+    check('Five Sevens = Five of a Kind + 12.1', approx(pay('Five Sevens') - pay('Five of a Kind'), BONUS));
+}
+{
+    // The two quints tiers: sevens pay the bonus on top of the jackpot, anything else doesn't.
+    const pay = (name) => Shamrock7.defaultPayouts[Shamrock7.ranks.indexOf(name)];
+
+    const sevens = [WILD, makeCard(N7, 0), makeCard(N7, 1), makeCard(N7, 2), makeCard(N7, 3)];
+    const { bestMask: sMask, bestEv: sEv } = evaluateAllMasks(Shamrock7, sevens, Shamrock7.defaultPayouts);
+    check('joker + 4 sevens: best mask is hold-all (31)', sMask === 31);
+    check('joker + 4 sevens: EV is the Five Sevens jackpot (942.1)', approx(sEv, pay('Five Sevens')));
+
+    const aces = [WILD, makeCard(A, 0), makeCard(A, 1), makeCard(A, 2), makeCard(A, 3)];
+    const { bestMask: aMask, bestEv: aEv } = evaluateAllMasks(Shamrock7, aces, Shamrock7.defaultPayouts);
+    check('joker + 4 aces: best mask is hold-all (31)', aMask === 31);
+    check('joker + 4 aces: EV is the plain Five of a Kind jackpot (930)', approx(aEv, pay('Five of a Kind')));
+}
+{
+    // A made quad is NOT pat-optimal here: with the joker still live in the deck, discarding
+    // the kicker is a shot at five of a kind, which dwarfs the quad payout.
+    const pay = (name) => Shamrock7.defaultPayouts[Shamrock7.ranks.indexOf(name)];
+
+    const sevens = [makeCard(N7, 0), makeCard(N7, 1), makeCard(N7, 2), makeCard(N7, 3), makeCard(K, 0)];
+    const { masks: sMasks, bestEv: sBest } = evaluateAllMasks(Shamrock7, sevens, Shamrock7.defaultPayouts);
+    check('four sevens: holding all 5 pays exactly 27.1 (Four Sevens)', approx(sMasks[31].ev, pay('Four Sevens')));
+    check('four sevens: discarding the kicker to chase the joker beats holding pat', sBest > sMasks[31].ev);
+
+    const aces = [makeCard(A, 0), makeCard(A, 1), makeCard(A, 2), makeCard(A, 3), makeCard(K, 0)];
+    const { masks: aMasks } = evaluateAllMasks(Shamrock7, aces, Shamrock7.defaultPayouts);
+    check('four aces: holding all 5 pays exactly 15 (plain Four of a Kind, no sevens bonus)', approx(aMasks[31].ev, pay('Four of a Kind')));
+}
+{
+    // has777Bonus() keys off the *set* being sevens, not merely sevens being present.
+    const rank = (dealt) => Shamrock7.ranks[Shamrock7.evalRank(extractFeatures(dealt))];
+    check('777 + KK is Sevens Full', rank([makeCard(N7, 0), makeCard(N7, 1), makeCard(N7, 2), makeCard(K, 0), makeCard(K, 1)]) === 'Sevens Full');
+    check('KKK + 77 is a plain Full House (sevens are only the pair)', rank([makeCard(K, 0), makeCard(K, 1), makeCard(K, 2), makeCard(N7, 0), makeCard(N7, 1)]) === 'Full House');
+    check('666 + KK is a plain Full House', rank([makeCard(4, 0), makeCard(4, 1), makeCard(4, 2), makeCard(K, 0), makeCard(K, 1)]) === 'Full House');
+    // the joker completing a pair of sevens into trips counts, whichever pair slot they land in
+    // (pairs are collected in ascending rank order, so sevens sit at index 1 only below a lower pair)
+    check('joker + KK + 77 is Sevens Full (sevens are pairs[0])', rank([WILD, makeCard(K, 0), makeCard(K, 1), makeCard(N7, 2), makeCard(N7, 3)]) === 'Sevens Full');
+    check('joker + 33 + 77 is Sevens Full (sevens are pairs[1])', rank([WILD, makeCard(D3, 0), makeCard(D3, 1), makeCard(N7, 2), makeCard(N7, 3)]) === 'Sevens Full');
+    check('joker + KK + 33 is a plain Full House', rank([WILD, makeCard(K, 0), makeCard(K, 1), makeCard(D3, 2), makeCard(D3, 3)]) === 'Full House');
+    check('joker + pair of sevens is Three Sevens', rank([WILD, makeCard(N7, 0), makeCard(N7, 1), makeCard(K, 0), makeCard(N9, 1)]) === 'Three Sevens');
+    check('trip aces is a plain Three of a Kind', rank([makeCard(A, 0), makeCard(A, 1), makeCard(A, 2), makeCard(K, 0), makeCard(N9, 1)]) === 'Three of a Kind');
+}
+{
+    // pat full houses are genuinely optimal to hold, bonus or not
+    const pay = (name) => Shamrock7.defaultPayouts[Shamrock7.ranks.indexOf(name)];
+
+    const sevensFull = [makeCard(N7, 0), makeCard(N7, 1), makeCard(N7, 2), makeCard(K, 0), makeCard(K, 1)];
+    const { bestMask: sMask, bestEv: sEv } = evaluateAllMasks(Shamrock7, sevensFull, Shamrock7.defaultPayouts);
+    check('sevens full: best mask is hold-all (31)', sMask === 31);
+    check('sevens full: EV is exactly 20.1', approx(sEv, pay('Sevens Full')));
+
+    const plainFull = [makeCard(4, 0), makeCard(4, 1), makeCard(4, 2), makeCard(K, 0), makeCard(K, 1)];
+    const { bestMask: pMask, bestEv: pEv } = evaluateAllMasks(Shamrock7, plainFull, Shamrock7.defaultPayouts);
+    check('plain full house: best mask is hold-all (31)', pMask === 31);
+    check('plain full house: EV is exactly 8', approx(pEv, pay('Full House')));
 }
 
 console.log(failures === 0 ? '\nAll checks passed.' : `\n${failures} check(s) FAILED.`);
