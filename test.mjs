@@ -6,6 +6,8 @@ import { DeucesWild } from './js/games/deucesWild.js';
 import { JokerPoker } from './js/games/jokerPoker.js';
 import { DoubleDoubleBonus } from './js/games/doubleDoubleBonus.js';
 import { SuperAcesBonus } from './js/games/superAcesBonus.js';
+import { OneEyedJacks } from './js/games/oneEyedJacks.js';
+import { oneEyedJacksDeck, cardStr } from './js/poker.js';
 
 const WILD = -1;
 let failures = 0;
@@ -330,6 +332,91 @@ console.log('\n=== Super Aces Bonus ===');
     const nines = [makeCard(N9, 0), makeCard(N9, 1), makeCard(D2, 2), makeCard(D5, 3), makeCard(6, 0)];
     const { masks: ninesMasks } = evaluateAllMasks(SuperAcesBonus, nines, SuperAcesBonus.defaultPayouts);
     check('pair of nines (below jacks): holding all 5 pays exactly 0 (Nothing, not Jacks-or-Better)', approx(ninesMasks[31].ev, 0));
+}
+
+console.log('\n=== One-Eyed Jacks ===');
+{
+    // Deck sanity: the Jack of hearts and Jack of spades are removed and replaced with 2 real
+    // Jokers -- Jc/Jd remain ordinary cards. NOTE: this means a *natural* royal flush is only
+    // possible in clubs or diamonds in this game (there's no Jack to complete one in hearts or
+    // spades) -- a real deck-construction detail worth testing directly, since it's exactly the
+    // kind of thing a hand-picked test card (e.g. using suit=hearts/spades for a royal-flush
+    // test) could accidentally deal a card that doesn't exist in this game at all.
+    const deck = oneEyedJacksDeck();
+    check(`deck has 52 cards (${deck.length})`, deck.length === 52);
+    check(`deck has exactly 2 wilds (${deck.filter(c => c === WILD).length})`, deck.filter(c => c === WILD).length === 2);
+    const realCards = deck.filter(c => c !== WILD).map(cardStr);
+    check('deck has no Jh or Js', !realCards.includes('Jh') && !realCards.includes('Js'));
+    check('deck still has Jc and Jd', realCards.includes('Jc') && realCards.includes('Jd'));
+}
+{
+    // pat natural royal flush -- must be clubs or diamonds (see deck note above)
+    const dealt = [makeCard(T, 0), makeCard(J, 0), makeCard(Q, 0), makeCard(K, 0), makeCard(A, 0)];
+    const { bestMask, bestEv } = evaluateAllMasks(OneEyedJacks, dealt, OneEyedJacks.defaultPayouts);
+    check('natural royal: best mask is hold-all (31)', bestMask === 31);
+    check('natural royal: EV is exactly 800', approx(bestEv, 800));
+}
+{
+    // 1 joker + 4 suited royal cards -> wild royal, guaranteed
+    const dealt = [WILD, makeCard(J, 1), makeCard(Q, 1), makeCard(K, 1), makeCard(A, 1)];
+    const { bestMask, bestEv } = evaluateAllMasks(OneEyedJacks, dealt, OneEyedJacks.defaultPayouts);
+    check('wild royal: best mask is hold-all (31)', bestMask === 31);
+    check('wild royal: EV is exactly 150', approx(bestEv, 150));
+}
+{
+    // 2 jokers + 3 real cards, all distinct trip-of-8s -> guaranteed five of a kind (can't be
+    // improved on), so holding pat is genuinely optimal here.
+    const dealt = [WILD, WILD, makeCard(4, 0), makeCard(4, 1), makeCard(4, 2)];
+    const { bestMask, bestEv } = evaluateAllMasks(OneEyedJacks, dealt, OneEyedJacks.defaultPayouts);
+    check('2 jokers + trips: best mask is hold-all (31)', bestMask === 31);
+    check('2 jokers + trips: EV is exactly 75 (five of a kind)', approx(bestEv, 75));
+}
+{
+    // 2 jokers + 3 distinct-rank real cards -> guaranteed three of a kind (pays only 1), but
+    // NOT optimal to hold pat: discarding 1 of the 3 dead singles for a fresh draw is a real
+    // shot at pairing up into quads. Same weak-made-hand reasoning as the other wildcard games.
+    const dealt = [WILD, WILD, makeCard(3, 0), makeCard(7, 1), makeCard(K, 2)];
+    const { masks, bestEv } = evaluateAllMasks(OneEyedJacks, dealt, OneEyedJacks.defaultPayouts);
+    check('2 jokers + 3 distinct: holding all 5 pays exactly 1 (three of a kind)', approx(masks[31].ev, 1));
+    check('2 jokers + 3 distinct: best play redraws for a higher EV than holding pat', bestEv > masks[31].ev);
+}
+{
+    // 2 jokers + a real pair of 8s + 1 dead singleton -> guaranteed four of a kind (pays 15).
+    // Independently hand-derived (not just internal self-consistency): discarding the dead
+    // singleton and drawing 1 replacement from the 47 remaining cards, the only two cards that
+    // matter are the other two 8s (8h, 8s) -- either upgrades to five of a kind (75); every one
+    // of the other 45 possible draws still keeps four of a kind (15) since the wilds + real pair
+    // always complete quads regardless of the redrawn card's rank.
+    const dealt = [WILD, WILD, makeCard(6, 0), makeCard(6, 1), makeCard(7, 2)];
+    const { masks, bestEv } = evaluateAllMasks(OneEyedJacks, dealt, OneEyedJacks.defaultPayouts);
+    check('2 jokers + pair: holding all 5 pays exactly 15 (four of a kind)', approx(masks[31].ev, 15));
+    const holdPair = masks[0b11110]; // hold both jokers + the pair of 8s, discard the singleton
+    const expected = (2 * 75 + 45 * 15) / 47;
+    check(`2 jokers + pair: discard-singleton EV ${holdPair.ev.toFixed(6)} matches hand-derived ${expected.toFixed(6)}`, approx(holdPair.ev, expected, 1e-9));
+    check(`2 jokers + pair: discard-singleton total draws is 47 (${holdPair.total})`, holdPair.total === 47);
+    check('2 jokers + pair: discarding the singleton beats holding pat', approx(bestEv, holdPair.ev, 1e-9) && bestEv > masks[31].ev);
+}
+{
+    // pat full house -- Jc/Jd pair over trip 8s (the only possible Jack pair in this deck)
+    const dealt = [makeCard(6, 0), makeCard(6, 1), makeCard(6, 2), makeCard(J, 0), makeCard(J, 1)];
+    const { bestMask, bestEv } = evaluateAllMasks(OneEyedJacks, dealt, OneEyedJacks.defaultPayouts);
+    check('full house: best mask is hold-all (31)', bestMask === 31);
+    check('full house: EV is exactly 5', approx(bestEv, 5));
+}
+{
+    // pat straight (no wilds involved) -- faces 4,5,6,7,8 (rank indices 2..6)
+    const dealt = [makeCard(2, 0), makeCard(3, 1), makeCard(4, 2), makeCard(5, 3), makeCard(6, 0)];
+    const { bestMask, bestEv } = evaluateAllMasks(OneEyedJacks, dealt, OneEyedJacks.defaultPayouts);
+    check('straight: best mask is hold-all (31)', bestMask === 31);
+    check('straight: EV is exactly 2', approx(bestEv, 2));
+}
+{
+    // two pair, no wilds -- weak made hand (pays only 1), standard strategy breaks it to chase
+    // a full house/quads rather than holding pat, so check the pat classification only.
+    const dealt = [makeCard(5, 0), makeCard(5, 1), makeCard(8, 2), makeCard(8, 3), makeCard(D2, 0)];
+    const { masks, bestEv } = evaluateAllMasks(OneEyedJacks, dealt, OneEyedJacks.defaultPayouts);
+    check('two pair: holding all 5 pays exactly 1', approx(masks[31].ev, 1));
+    check('two pair: best play redraws for a higher EV than holding pat', bestEv > masks[31].ev);
 }
 
 console.log(failures === 0 ? '\nAll checks passed.' : `\n${failures} check(s) FAILED.`);

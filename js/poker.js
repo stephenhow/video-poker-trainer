@@ -56,6 +56,22 @@ export function jokerDeck() {
     return [...standardDeck(), WILD];
 }
 
+// 52-card deck for One-Eyed Jacks: the Jack of hearts and Jack of spades are removed and
+// replaced with 2 real Jokers (mirrors the C++ engine's ONE_EYED_JACKS_DECK) -- Jc/Jd remain
+// ordinary cards, so up to 2 wilds can appear in a hand.
+const JACK = 9, HEARTS = 2, SPADES = 3;
+export function oneEyedJacksDeck() {
+    const deck = [];
+    for (let r = 0; r < 13; r++) {
+        for (let s = 0; s < 4; s++) {
+            if (r === JACK && (s === HEARTS || s === SPADES)) continue;
+            deck.push(makeCard(r, s));
+        }
+    }
+    deck.push(WILD, WILD);
+    return deck;
+}
+
 // Fisher-Yates shuffle (in place), returns the array for convenience.
 export function shuffle(arr) {
     for (let i = arr.length - 1; i > 0; i--) {
