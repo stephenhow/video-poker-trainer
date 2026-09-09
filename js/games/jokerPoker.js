@@ -23,6 +23,9 @@ export const JokerPoker = {
     ranks: RANKS,
     defaultPayouts: [0, 0, 0, 1, 2, 5, 6, 10, 20, 50, 100, 50, 1000],
     wildLabel: (card) => (isWild(card) ? { rank: '', suit: '' } : null), // a real Joker, not a wild-rank card
+    // Optional: a game may name a PDF (in the repo root) with its C++-engine-generated
+    // optimal-strategy priority-rule report. Only games that set this get a download link.
+    strategyPdf: { href: 'jokerPoker2P.pdf', label: 'Optimal strategy (PDF)' },
 
     evalRank(f) {
         if (isQuints(f)) return FIVE_OF_A_KIND;

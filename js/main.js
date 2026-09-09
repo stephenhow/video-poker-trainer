@@ -6,6 +6,7 @@ import { GAMES } from './games/index.js';
 const el = (id) => document.getElementById(id);
 const gameSelect = el('game-select');
 const paytableEl = el('paytable');
+const strategyDownloadEl = el('strategy-download');
 const selectorCardsEl = el('selector-cards');
 const playCardsEl = el('play-cards');
 const creditMeterEl = el('credit-meter-value');
@@ -52,10 +53,27 @@ function renderPaytable() {
     });
 }
 
+const DOWNLOAD_ICON = '<svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" '
+    + 'stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M8 1.5v8M4.5 6.5 8 10l3.5-3.5M2.5 12.5h11"/></svg>';
+
+// Only games that name a strategy PDF (see js/games/*.js's `strategyPdf`) get a download link
+// here -- most games don't have one yet, so this stays hidden for them.
+function renderStrategyLink() {
+    if (!game.strategyPdf) {
+        strategyDownloadEl.classList.add('hidden');
+        strategyDownloadEl.innerHTML = '';
+        return;
+    }
+    const { href, label } = game.strategyPdf;
+    strategyDownloadEl.classList.remove('hidden');
+    strategyDownloadEl.innerHTML = `<a class="strategy-link" href="${href}" download>${DOWNLOAD_ICON}<span>${label}</span></a>`;
+}
+
 function switchGame(index) {
     game = GAMES[index];
     payouts = game.defaultPayouts.slice();
     renderPaytable();
+    renderStrategyLink();
     resetHand();
     resetStats();
 }
@@ -246,5 +264,6 @@ el('reset-stats').addEventListener('click', resetStats);
 
 buildGameSelect();
 renderPaytable();
+renderStrategyLink();
 renderStats();
 resetHand();
