@@ -2,6 +2,7 @@
 import { makeCard } from './js/poker.js';
 import { evaluateAllMasks } from './js/engine.js';
 import { JacksOrBetter } from './js/games/jacksOrBetter.js';
+import { BonusPokerDeluxe } from './js/games/bonusPokerDeluxe.js';
 import { DeucesWild } from './js/games/deucesWild.js';
 import { JokerPoker } from './js/games/jokerPoker.js';
 import { DoubleDoubleBonus } from './js/games/doubleDoubleBonus.js';
@@ -52,6 +53,45 @@ console.log('=== Jacks or Better ===');
     const ms = performance.now() - t0;
     check(`garbage hand: mask 0 total draws is C(47,5)=1533939 (${masks[0].total})`, masks[0].total === 1533939);
     console.log(`  garbage hand (worst case, all 32 masks): ${ms.toFixed(0)}ms, best=0b${bestMask.toString(2).padStart(5, '0')} ev=${bestEv.toFixed(4)}`);
+}
+
+console.log('\n=== Bonus Poker Deluxe ===');
+{
+    // Bonus Poker Deluxe is Jacks or Better with only 2 payouts changed (Four of a Kind
+    // 25->80, Two Pair 2->1) -- confirm the schedule and that it's genuinely reusing
+    // JacksOrBetter's deck/evalRank rather than a re-derived copy.
+    const dropChanged = (payouts) => payouts.map((v, i) => (i === 2 || i === 7 ? null : v));
+    check('payouts match Jacks or Better except Two Pair and Four of a Kind',
+        JSON.stringify(dropChanged(BonusPokerDeluxe.defaultPayouts)) === JSON.stringify(dropChanged(JacksOrBetter.defaultPayouts)));
+    check('Two Pair payout is 1 (not JoB\'s 2)', BonusPokerDeluxe.defaultPayouts[2] === 1);
+    check('Four of a Kind payout is 80 (not JoB\'s 25)', BonusPokerDeluxe.defaultPayouts[7] === 80);
+    check('reuses JacksOrBetter.evalRank directly', BonusPokerDeluxe.evalRank === JacksOrBetter.evalRank);
+    check('reuses JacksOrBetter.deck directly', BonusPokerDeluxe.deck === JacksOrBetter.deck);
+    check('has a strategyPdf pointing at bonusPokerDeluxe.pdf', BonusPokerDeluxe.strategyPdf?.href === 'bonusPokerDeluxe.pdf');
+}
+{
+    // pat royal flush -- unaffected by the payout changes, sanity check the shared evalRank
+    const dealt = [makeCard(T, 3), makeCard(J, 3), makeCard(Q, 3), makeCard(K, 3), makeCard(A, 3)];
+    const { bestMask, bestEv } = evaluateAllMasks(BonusPokerDeluxe, dealt, BonusPokerDeluxe.defaultPayouts);
+    check('pat royal: best mask is hold-all (31)', bestMask === 31);
+    check('pat royal: EV is exactly 800', approx(bestEv, 800));
+}
+{
+    // pat quads -- flat 80 regardless of kicker (no kicker sub-bonus in this schedule, unlike
+    // Double Double Bonus), so holding pat ties with discarding the kicker to redraw; check
+    // the EV only, not which mask wins the tie (same reasoning as other flat-quad-tier tests).
+    const dealt = [makeCard(4, 0), makeCard(4, 1), makeCard(4, 2), makeCard(4, 3), makeCard(N9, 0)];
+    const { masks, bestEv } = evaluateAllMasks(BonusPokerDeluxe, dealt, BonusPokerDeluxe.defaultPayouts);
+    check('four of a kind: holding all 5 pays exactly 80', approx(masks[31].ev, 80));
+    check('four of a kind: EV is exactly 80', approx(bestEv, 80));
+}
+{
+    // two pair -- weak made hand at this schedule's reduced payout (1, down from JoB's 2),
+    // standard strategy breaks it to chase a full house/quads rather than holding pat.
+    const dealt = [makeCard(5, 0), makeCard(5, 1), makeCard(8, 2), makeCard(8, 3), makeCard(D2, 0)];
+    const { masks, bestEv } = evaluateAllMasks(BonusPokerDeluxe, dealt, BonusPokerDeluxe.defaultPayouts);
+    check('two pair: holding all 5 pays exactly 1', approx(masks[31].ev, 1));
+    check('two pair: best play redraws for a higher EV than holding pat', bestEv > masks[31].ev);
 }
 
 console.log('\n=== Deuces Wild ===');
