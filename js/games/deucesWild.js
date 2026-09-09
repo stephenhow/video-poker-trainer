@@ -61,7 +61,7 @@ export const DeucesWild = {
     deck: deucesWildDeck,
     ranks: RANKS,
     defaultPayouts: [0, 1, 2, 3, 4, 4, 9, 15, 25, 200, 800],
-    wildLabel: (card) => (isWild(card) ? { rank: '2', suit: 'Wild' } : null),
+    wildLabel: (card) => (isWild(card) ? { rank: '2', suit: '' } : null),
 
     evalRank(f) {
         switch (f.jokerCnt) {

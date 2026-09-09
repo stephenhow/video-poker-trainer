@@ -22,7 +22,7 @@ export const JokerPoker = {
     deck: jokerDeck,
     ranks: RANKS,
     defaultPayouts: [0, 0, 0, 1, 2, 5, 6, 10, 20, 50, 100, 50, 1000],
-    wildLabel: (card) => (isWild(card) ? { rank: '', suit: 'Wild' } : null), // a real Joker, not a wild-rank card
+    wildLabel: (card) => (isWild(card) ? { rank: '', suit: '' } : null), // a real Joker, not a wild-rank card
 
     evalRank(f) {
         if (isQuints(f)) return FIVE_OF_A_KIND;

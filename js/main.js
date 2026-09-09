@@ -83,7 +83,7 @@ function makeCardDiv(card, { held = false, isBack = false, drawn = false, intera
         const wildLabelFn = game.wildLabel || defaultWildLabel;
         div.innerHTML = cardHtml(card, wildLabelFn) + (drawn ? '<span class="badge">drawn</span>' : '');
         const label = wildLabelFn(card);
-        const ariaLabel = label ? `${label.rank} ${label.suit}`.trim() : cardStr(card);
+        const ariaLabel = label ? [label.rank, label.suit, 'Wild'].filter(Boolean).join(' ') : cardStr(card);
         div.setAttribute('aria-label', ariaLabel + (held ? ', held' : ''));
     }
     if (interactive) {

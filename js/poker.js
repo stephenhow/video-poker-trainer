@@ -31,19 +31,25 @@ export function cardStr(card) {
     return RANK_CHARS[rankOf(card)] + SUIT_CHARS[suitOf(card)];
 }
 
-// The default wild display: a plain, rank-less "Wild" -- used when a game doesn't need its
-// wild cards to look different from each other (see `wildLabelFn` below).
-export const defaultWildLabel = (c) => (isWild(c) ? { rank: '', suit: 'Wild' } : null);
+// The default wild display: no rank, no suit, just the "Wild" tag cardHtml always appends
+// below -- used when a game doesn't need its wild cards to look different from each other
+// (see `wildLabelFn` below).
+export const defaultWildLabel = (c) => (isWild(c) ? { rank: '', suit: '' } : null);
 
-// `wildLabelFn(card)` lets each game say how a wild card should be displayed, per card value
-// -- returns null for "render this card normally" or {rank, suit} to render it as wild instead.
-// Most wild games use the same label for every wild card in the hand (a wild deuce reads as
-// rank "2" + suit "Wild"; a real Joker as blank rank + "Wild"). One-Eyed Jacks is the
-// exception: its 2 jokers are tagged (see makeJoker above) so they can be shown as "J"+"h Wild"
-// vs "J"+"s Wild" instead of 2 indistinguishable wilds.
+// `wildLabelFn(card)` lets each game say how a wild card's rank/suit should look, per card
+// value -- returns null for "render this card normally", or {rank, suit, red} to render it as
+// wild instead: `rank`/`suit` render exactly like a normal card's rank/suit (suit omitted
+// entirely if it's ''), colored red when `red` is true, and cardHtml always appends a gold
+// "Wild" tag underneath regardless. A wild deuce is rank "2" with no suit; a real Joker is
+// blank rank, no suit -- both just show "Wild" alone. One-Eyed Jacks is the exception: its 2
+// jokers are tagged (see makeJoker above) so they can look like an ordinary "J" over a colored
+// ♥/♠ symbol, with "Wild" underneath, instead of 2 indistinguishable wilds.
 export function cardHtml(card, wildLabelFn = defaultWildLabel) {
     const label = wildLabelFn(card);
-    if (label) return `<span class="rank">${label.rank}</span><span class="suit wild">${label.suit}</span>`;
+    if (label) {
+        const suitSpan = label.suit ? `<span class="suit${label.red ? ' red' : ''}">${label.suit}</span>` : '';
+        return `<span class="rank">${label.rank}</span>${suitSpan}<span class="wild-tag">Wild</span>`;
+    }
     const suit = suitOf(card);
     const red = (suit === 1 || suit === 2);
     return `<span class="rank">${RANK_CHARS[rankOf(card)]}</span><span class="suit${red ? ' red' : ''}">${SUIT_SYMBOLS[suit]}</span>`;

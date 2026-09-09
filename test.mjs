@@ -335,8 +335,8 @@ console.log('\n=== Super Aces Bonus ===');
 }
 
 console.log('\n=== One-Eyed Jacks ===');
-const JOKER_H = makeJoker(2); // the joker tagged "hearts" -- displays as "J ♥ Wild"
-const JOKER_S = makeJoker(3); // the joker tagged "spades" -- displays as "J ♠ Wild"
+const JOKER_H = makeJoker(2); // the joker tagged "hearts" -- displays as a red "J ♥" + gold "Wild" underneath
+const JOKER_S = makeJoker(3); // the joker tagged "spades" -- displays as a black "J ♠" + gold "Wild" underneath
 {
     // Deck sanity: the Jack of hearts and Jack of spades are removed and replaced with 2
     // tagged jokers -- Jc/Jd remain ordinary cards. NOTE: this means a *natural* royal flush
@@ -359,10 +359,13 @@ const JOKER_S = makeJoker(3); // the joker tagged "spades" -- displays as "J ♠
     check('isJoker recognizes both tagged jokers', isJoker(JOKER_H) && isJoker(JOKER_S));
     check('isJoker rejects an ordinary card (Jc)', !isJoker(makeCard(J, 0)));
     check('jokerTag distinguishes hearts from spades', jokerTag(JOKER_H) === 2 && jokerTag(JOKER_S) === 3);
+    // Labels render like a normal card's rank+suit (colored red for hearts, black for
+    // spades) -- cardHtml appends the gold "Wild" tag underneath unconditionally, so the
+    // label itself only needs to say what the rank/suit/color should be.
     const hLabel = OneEyedJacks.wildLabel(JOKER_H);
     const sLabel = OneEyedJacks.wildLabel(JOKER_S);
-    check(`hearts joker labeled "J"+"♥ Wild" (got "${hLabel.rank}"+"${hLabel.suit}")`, hLabel.rank === 'J' && hLabel.suit === '♥ Wild');
-    check(`spades joker labeled "J"+"♠ Wild" (got "${sLabel.rank}"+"${sLabel.suit}")`, sLabel.rank === 'J' && sLabel.suit === '♠ Wild');
+    check(`hearts joker labeled "J"+"♥"+red (got "${hLabel.rank}"+"${hLabel.suit}"+red:${hLabel.red})`, hLabel.rank === 'J' && hLabel.suit === '♥' && hLabel.red === true);
+    check(`spades joker labeled "J"+"♠"+black (got "${sLabel.rank}"+"${sLabel.suit}"+red:${sLabel.red})`, sLabel.rank === 'J' && sLabel.suit === '♠' && !sLabel.red);
     check('wildLabel returns null for an ordinary card (Jc)', OneEyedJacks.wildLabel(makeCard(J, 0)) === null);
 }
 {
