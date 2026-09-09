@@ -24,6 +24,8 @@ let dealt = [];          // the 5 originally-dealt cards -- shown in the selecto
 let heldMask = 0;
 let phase = 'idle';      // 'idle' | 'holding' | 'result'
 let resultCards = null;  // held cards + newly-drawn replacements, set once Draw is pressed
+let handOutcome = null;  // {rank, payout} of the drawn hand, as actually paid at draw time
+let analysisTimer = null; // debounce for re-analysing after a pay table edit
 
 const stats = { hands: 0, optimal: 0, evLost: 0, credits: 0 };
 
@@ -49,6 +51,10 @@ function renderPaytable() {
             const r = Number(inp.dataset.rank);
             const v = Number(inp.value);
             payouts[r] = Number.isFinite(v) && v >= 0 ? v : 0;
+            // Re-analyse the hand on screen under the edited schedule. The table itself is left
+            // as-is rather than re-rendered -- it's sorted by payout, so rebuilding it here
+            // would yank the row out from under the cursor mid-edit.
+            scheduleAnalysisRefresh();
         });
     });
 }
@@ -79,10 +85,12 @@ function switchGame(index) {
 }
 
 function resetHand() {
+    clearTimeout(analysisTimer); // don't let a queued re-analysis fire against a cleared hand
     dealt = [];
     heldMask = 0;
     phase = 'idle';
     resultCards = null;
+    handOutcome = null;
     selectorCardsEl.innerHTML = '';
     playCardsEl.innerHTML = '';
     outcomeBannerEl.classList.add('hidden');
@@ -182,9 +190,43 @@ function shuffleRemaining() {
     return shuffle(rem);
 }
 
-function doDraw() {
+// Re-runs the 32-mask analysis of the current hand against the pay table as it stands right
+// now, and repaints the feedback panel. Called once after a draw, and again whenever a payout
+// is edited, so the EV table always reflects the schedule on screen. Returns the figures the
+// caller needs for session stats.
+//
+// Deliberately does not touch the outcome banner, the credit meter or the session stats: those
+// record the hand as it was actually played and paid. Editing the pay table afterwards asks
+// "what would the right play have been under this schedule?", which shouldn't rewrite history.
+function renderAnalysis() {
     const { masks, bestMask, bestEv } = evaluateAllMasks(game, dealt, payouts);
     const yourResult = masks[heldMask];
+    const isOptimal = Math.abs(yourResult.ev - bestEv) < 1e-9;
+    const evLoss = bestEv - yourResult.ev;
+
+    feedbackEl.classList.remove('hidden');
+    feedbackHeadline.className = isOptimal ? 'good' : 'bad';
+    feedbackHeadline.textContent = isOptimal
+        ? `Optimal! You made a ${game.ranks[handOutcome.rank]} -- paid ${handOutcome.payout}.`
+        : `Not quite. You made a ${game.ranks[handOutcome.rank]} -- paid ${handOutcome.payout}.`;
+    feedbackDetail.innerHTML = isOptimal
+        ? `Your hold (EV ${fmt(yourResult.ev)}) was the mathematically best play.`
+        : `Your hold's EV was ${fmt(yourResult.ev)}. The best play was to hold `
+          + `${describeMask(bestMask)} (EV ${fmt(bestEv)}) -- you gave up ${fmt(evLoss)} in expected value.`;
+
+    renderMaskTable(masks, bestMask, heldMask);
+    return { isOptimal, evLoss };
+}
+
+// A full sweep takes a few hundred ms (longer on the 53-card joker decks) and blocks the UI,
+// so wait for a pause in typing rather than recomputing on every keystroke.
+function scheduleAnalysisRefresh() {
+    if (phase !== 'result') return; // nothing on screen to refresh yet
+    clearTimeout(analysisTimer);
+    analysisTimer = setTimeout(renderAnalysis, 250);
+}
+
+function doDraw() {
     const heldCards = applyMask(dealt, heldMask);
     const drawnCards = shuffleRemaining().slice(0, 5 - heldCards.length);
 
@@ -195,6 +237,7 @@ function doDraw() {
     }
     const resultRank = game.evalRank(extractFeatures(resultCards));
     const resultPayout = payouts[resultRank];
+    handOutcome = { rank: resultRank, payout: resultPayout };
 
     phase = 'result';
     dealBtn.disabled = false;
@@ -202,8 +245,7 @@ function doDraw() {
     renderSelectorCards();
     renderPlayCards();
 
-    const isOptimal = Math.abs(yourResult.ev - bestEv) < 1e-9;
-    const evLoss = bestEv - yourResult.ev;
+    const { isOptimal, evLoss } = renderAnalysis();
 
     stats.hands++;
     if (isOptimal) stats.optimal++;
@@ -216,18 +258,6 @@ function doDraw() {
     outcomeBannerEl.textContent = resultPayout > 0
         ? `${game.ranks[resultRank]} -- WIN ${resultPayout}`
         : `${game.ranks[resultRank]} -- no win`;
-
-    feedbackEl.classList.remove('hidden');
-    feedbackHeadline.className = isOptimal ? 'good' : 'bad';
-    feedbackHeadline.textContent = isOptimal
-        ? `Optimal! You made a ${game.ranks[resultRank]} -- paid ${resultPayout}.`
-        : `Not quite. You made a ${game.ranks[resultRank]} -- paid ${resultPayout}.`;
-    feedbackDetail.innerHTML = isOptimal
-        ? `Your hold (EV ${fmt(yourResult.ev)}) was the mathematically best play.`
-        : `Your hold's EV was ${fmt(yourResult.ev)}. The best play was to hold `
-          + `${describeMask(bestMask)} (EV ${fmt(bestEv)}) -- you gave up ${fmt(evLoss)} in expected value.`;
-
-    renderMaskTable(masks, bestMask, heldMask);
 }
 
 function describeMask(mask) {
