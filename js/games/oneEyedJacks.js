@@ -4,7 +4,7 @@ import { isQuints, isRF, isSF, isQuads, isFH, isFlush, isStr, is3K, pairsCnt, ha
 // Rank order matches the C++ engine's OneEyedJacksPayTable enum (more_games.h). The Jack of
 // hearts and Jack of spades are removed from the deck and replaced with 2 jokers -- tagged
 // hearts and spades respectively (see oneEyedJacksDeck/jokerTag in poker.js) purely so they
-// can be displayed as 2 distinguishable cards ("J h Wild" / "J s Wild") instead of 2 identical
+// can be displayed as 2 distinguishable cards ("J ♥ Wild" / "J ♠ Wild") instead of 2 identical
 // generic wilds. The tag has no effect on hand evaluation, which is otherwise unchanged from
 // a plain 2-wild-joker deck.
 const HEARTS = 2, SPADES = 3;
@@ -22,8 +22,8 @@ export const OneEyedJacks = {
     defaultPayouts: [0, 1, 1, 2, 3, 5, 15, 45, 75, 150, 800],
     wildLabel: (card) => {
         const tag = jokerTag(card);
-        if (tag === HEARTS) return { rank: 'J', suit: 'h Wild' };
-        if (tag === SPADES) return { rank: 'J', suit: 's Wild' };
+        if (tag === HEARTS) return { rank: 'J', suit: '♥ Wild' };
+        if (tag === SPADES) return { rank: 'J', suit: '♠ Wild' };
         return null;
     },
 

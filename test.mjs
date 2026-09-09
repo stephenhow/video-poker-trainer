@@ -335,8 +335,8 @@ console.log('\n=== Super Aces Bonus ===');
 }
 
 console.log('\n=== One-Eyed Jacks ===');
-const JOKER_H = makeJoker(2); // the joker tagged "hearts" -- displays as "J h Wild"
-const JOKER_S = makeJoker(3); // the joker tagged "spades" -- displays as "J s Wild"
+const JOKER_H = makeJoker(2); // the joker tagged "hearts" -- displays as "J ♥ Wild"
+const JOKER_S = makeJoker(3); // the joker tagged "spades" -- displays as "J ♠ Wild"
 {
     // Deck sanity: the Jack of hearts and Jack of spades are removed and replaced with 2
     // tagged jokers -- Jc/Jd remain ordinary cards. NOTE: this means a *natural* royal flush
@@ -361,8 +361,8 @@ const JOKER_S = makeJoker(3); // the joker tagged "spades" -- displays as "J s W
     check('jokerTag distinguishes hearts from spades', jokerTag(JOKER_H) === 2 && jokerTag(JOKER_S) === 3);
     const hLabel = OneEyedJacks.wildLabel(JOKER_H);
     const sLabel = OneEyedJacks.wildLabel(JOKER_S);
-    check(`hearts joker labeled "J"+"h Wild" (got "${hLabel.rank}"+"${hLabel.suit}")`, hLabel.rank === 'J' && hLabel.suit === 'h Wild');
-    check(`spades joker labeled "J"+"s Wild" (got "${sLabel.rank}"+"${sLabel.suit}")`, sLabel.rank === 'J' && sLabel.suit === 's Wild');
+    check(`hearts joker labeled "J"+"♥ Wild" (got "${hLabel.rank}"+"${hLabel.suit}")`, hLabel.rank === 'J' && hLabel.suit === '♥ Wild');
+    check(`spades joker labeled "J"+"♠ Wild" (got "${sLabel.rank}"+"${sLabel.suit}")`, sLabel.rank === 'J' && sLabel.suit === '♠ Wild');
     check('wildLabel returns null for an ordinary card (Jc)', OneEyedJacks.wildLabel(makeCard(J, 0)) === null);
 }
 {
