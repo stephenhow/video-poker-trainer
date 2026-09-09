@@ -4,13 +4,14 @@
 // (This numbering mirrors the C++ engine's poker::Card::Rank/Suit enums.)
 
 export const WILD = -1; // generic wild sentinel -- use this when a game's wild cards don't
-// need to be told apart from each other (Deuces Wild's 4 deuces, Joker Poker's 1 joker).
+// need to be told apart from each other (currently just Joker Poker's 1 joker).
 
 // A second, out-of-range "rank" for a *distinguishable* named joker: makeJoker(tag) builds a
 // card value that isWild() still recognizes as wild, but that isJoker()/jokerTag() can tell
-// apart from other jokers by whatever small int `tag` a game assigns it (One-Eyed Jacks reuses
-// the suit constants as tags, one joker "tagged" hearts and the other spades, purely so its
-// wildLabel can show each with a different label -- see js/games/oneEyedJacks.js).
+// apart from other jokers by whatever small int `tag` a game assigns it. Deuces Wild and
+// One-Eyed Jacks both tag their jokers by the suit of the card each one replaced, purely so
+// their wildLabel can show each with a different label -- see js/games/deucesWild.js and
+// js/games/oneEyedJacks.js.
 const JOKER_RANK = 13;
 export function makeJoker(tag) { return makeCard(JOKER_RANK, tag); }
 export function isJoker(card) { return rankOf(card) === JOKER_RANK; }
@@ -25,6 +26,8 @@ export function makeCard(rank, suit) { return rank * 4 + suit; }
 export function rankOf(card) { return card >> 2; }
 export function suitOf(card) { return card & 3; }
 export function isWild(card) { return card === WILD || isJoker(card); }
+export function suitSymbol(suit) { return SUIT_SYMBOLS[suit]; }
+export function isRedSuit(suit) { return suit === 1 || suit === 2; } // diamonds, hearts
 
 export function cardStr(card) {
     if (isWild(card)) return '*';
@@ -64,13 +67,14 @@ export function standardDeck() {
     return deck;
 }
 
-// 52-card deck for Deuces Wild: the 4 deuces are removed and replaced with 4 WILD entries
-// (mirrors the C++ engine's FULL_DW_DECK -- deuces never appear as literal cards, so the
-// combinatorics/compression naturally treat them as fully generic wild cards).
+// 52-card deck for Deuces Wild: the 4 deuces are removed and replaced with 4 jokers, tagged by
+// the suit each replaces (mirrors the C++ engine's FULL_DW_DECK, but -- like One-Eyed Jacks --
+// keeps the 4 wilds distinguishable from each other so they can be displayed as "the joker
+// that used to be the 2 of clubs/diamonds/hearts/spades" rather than 4 identical wilds).
 export function deucesWildDeck() {
     const deck = [];
     for (let r = 1; r < 13; r++) for (let s = 0; s < 4; s++) deck.push(makeCard(r, s));
-    for (let i = 0; i < 4; i++) deck.push(WILD);
+    for (let s = 0; s < 4; s++) deck.push(makeJoker(s));
     return deck;
 }
 

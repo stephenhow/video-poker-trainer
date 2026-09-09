@@ -56,8 +56,19 @@ console.log('=== Jacks or Better ===');
 
 console.log('\n=== Deuces Wild ===');
 {
+    // wildLabel differentiates the 4 deuces by which suit's 2 each replaced -- analogous to
+    // One-Eyed Jacks' 2 tagged jokers, just 4 of them (clubs, diamonds, hearts, spades).
+    const labels = [0, 1, 2, 3].map(tag => DeucesWild.wildLabel(makeJoker(tag)));
+    const expected = [{ suit: '♣', red: false }, { suit: '♦', red: true }, { suit: '♥', red: true }, { suit: '♠', red: false }];
+    labels.forEach((label, tag) => {
+        check(`deuce tagged ${tag} labeled "2"+"${expected[tag].suit}"+red:${expected[tag].red} (got "${label.rank}"+"${label.suit}"+red:${label.red})`,
+            label.rank === '2' && label.suit === expected[tag].suit && Boolean(label.red) === expected[tag].red);
+    });
+    check('wildLabel returns null for an ordinary card (3c -- 2c no longer exists in this deck)', DeucesWild.wildLabel(makeCard(1, 0)) === null);
+}
+{
     // 4 deuces + a real card -- must always be FOUR_DEUCES (payout 200) regardless of hold
-    const dealt = [WILD, WILD, WILD, WILD, makeCard(5, 1)];
+    const dealt = [makeJoker(0), makeJoker(1), makeJoker(2), makeJoker(3), makeCard(5, 1)];
     const { bestMask, bestEv } = evaluateAllMasks(DeucesWild, dealt, DeucesWild.defaultPayouts);
     // With all 4 wild-deck entries already dealt, none remain in the deck -- so holding just
     // the 4 wilds and drawing any 1 real card *also* lands on Four Deuces (jokerCnt still 4).
@@ -74,7 +85,7 @@ console.log('\n=== Deuces Wild ===');
 }
 {
     // one deuce + 4 to a royal (suited, missing one royal rank) -> wild royal, guaranteed
-    const dealt = [WILD, makeCard(J, 1), makeCard(Q, 1), makeCard(K, 1), makeCard(A, 1)];
+    const dealt = [makeJoker(0), makeCard(J, 1), makeCard(Q, 1), makeCard(K, 1), makeCard(A, 1)];
     const { bestMask, bestEv } = evaluateAllMasks(DeucesWild, dealt, DeucesWild.defaultPayouts);
     check('1-deuce wild royal: best mask is hold-all (31)', bestMask === 31);
     check('1-deuce wild royal: EV is exactly 25', approx(bestEv, 25));

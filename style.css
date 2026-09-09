@@ -121,7 +121,12 @@ main { display: flex; flex-direction: column; align-items: center; gap: 18px; }
 .card .rank { line-height: 1.1; }
 .card .suit { font-size: 1.5rem; line-height: 1; }
 .card .suit.red { color: #c0392b; }
-.card .wild-tag { font-size: 0.75rem; font-weight: 700; letter-spacing: 0.03em; color: #b8860b; line-height: 1.3; margin-top: 2px; }
+/* Absolutely positioned (not a flex child) so it doesn't shift the rank+suit above it out of
+   the same centered position a normal 2-span card uses -- it just sits below, independently. */
+.card .wild-tag {
+    position: absolute; bottom: 12px; left: 50%; transform: translateX(-50%);
+    font-size: 0.75rem; font-weight: 700; letter-spacing: 0.03em; color: #b8860b; white-space: nowrap;
+}
 .card.held { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(242,193,78,0.35); transform: translateY(-8px); }
 .card:focus-visible { outline: 2px solid #fff; outline-offset: 3px; }
 .card.empty { background: transparent; border-style: dashed; border-color: rgba(255,255,255,0.25); cursor: default; }

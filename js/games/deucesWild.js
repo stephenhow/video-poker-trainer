@@ -1,4 +1,4 @@
-import { deucesWildDeck, isWild } from '../poker.js';
+import { deucesWildDeck, jokerTag, suitSymbol, isRedSuit } from '../poker.js';
 import { isNRoyal, isNStraight, isNSuitedStraight, quadsCnt, tripsCnt, pairsCnt } from '../handFeatures.js';
 
 // Rank order matches the C++ engine's DeucesWildPayTable enum.
@@ -61,7 +61,15 @@ export const DeucesWild = {
     deck: deucesWildDeck,
     ranks: RANKS,
     defaultPayouts: [0, 1, 2, 3, 4, 4, 9, 15, 25, 200, 800],
-    wildLabel: (card) => (isWild(card) ? { rank: '2', suit: '' } : null),
+    // The 4 wild deuces are tagged by the suit each replaced (see deucesWildDeck), so each
+    // renders as a normal-looking "2" over its real, correctly colored suit symbol, with a
+    // "Wild" tag underneath -- e.g. the joker that replaced the 2 of hearts shows "2"+"♥"
+    // (red) rather than 4 indistinguishable wilds.
+    wildLabel: (card) => {
+        const tag = jokerTag(card);
+        if (tag === null) return null;
+        return { rank: '2', suit: suitSymbol(tag), red: isRedSuit(tag) };
+    },
 
     evalRank(f) {
         switch (f.jokerCnt) {

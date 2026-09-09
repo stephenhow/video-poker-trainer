@@ -1,4 +1,4 @@
-import { oneEyedJacksDeck, jokerTag } from '../poker.js';
+import { oneEyedJacksDeck, jokerTag, suitSymbol, isRedSuit } from '../poker.js';
 import { isQuints, isRF, isSF, isQuads, isFH, isFlush, isStr, is3K, pairsCnt, hasJoker } from '../handFeatures.js';
 
 // Rank order matches the C++ engine's OneEyedJacksPayTable enum (more_games.h). The Jack of
@@ -22,9 +22,8 @@ export const OneEyedJacks = {
     defaultPayouts: [0, 1, 1, 2, 3, 5, 15, 45, 75, 150, 800],
     wildLabel: (card) => {
         const tag = jokerTag(card);
-        if (tag === HEARTS) return { rank: 'J', suit: '♥', red: true };
-        if (tag === SPADES) return { rank: 'J', suit: '♠', red: false };
-        return null;
+        if (tag !== HEARTS && tag !== SPADES) return null;
+        return { rank: 'J', suit: suitSymbol(tag), red: isRedSuit(tag) };
     },
 
     evalRank(f) {
