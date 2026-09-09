@@ -56,10 +56,14 @@ export function makeRankBonusGame({ id, name, bonusRank, plural, bonus, jackpot,
         ],
         wildLabel: (card) => (isWild(card) ? { rank: '', suit: '' } : null), // a real Joker
         strategyPdf,
-        // Watermark art for the cards that carry the bonus, so a dealt seven/eight is obvious
-        // at a glance. main.js tags matching cards with data-card-art="<id>"; style.css
-        // supplies the image. Purely decorative -- it has no effect on evaluation.
-        cardArt: (card) => (!isWild(card) && rankOf(card) === bonusRank ? art : null),
+        // Watermark art: the joker gets the same dancing jester as the other joker-deck games,
+        // and the cards carrying the bonus get this game's own symbol, so a dealt seven/eight
+        // is obvious at a glance. main.js tags matching cards with data-card-art="<id>";
+        // style.css supplies the image. Purely decorative -- no effect on evaluation.
+        cardArt: (card) => {
+            if (isWild(card)) return 'jester';
+            return rankOf(card) === bonusRank ? art : null;
+        },
 
         evalRank(f) {
             // The C++ writes this first test as `hasJoker() && getQuadsCnt()`; with a

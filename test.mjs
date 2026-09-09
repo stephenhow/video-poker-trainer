@@ -733,8 +733,11 @@ console.log('\n=== 8-Ball ===');
     check('Shamrock 7s marks its sevens with the shamrock', Shamrock7.cardArt(makeCard(N7, 0)) === 'shamrock');
     check('neither marks the other game\'s bonus rank',
         EightBall.cardArt(makeCard(N7, 0)) === null && Shamrock7.cardArt(makeCard(N8, 0)) === null);
-    check('ordinary ranks and the joker go unmarked',
-        [makeCard(K, 0), makeCard(A, 1), makeCard(D3, 2), WILD].every(c => EightBall.cardArt(c) === null && Shamrock7.cardArt(c) === null));
+    check('ordinary ranks go unmarked',
+        [makeCard(K, 0), makeCard(A, 1), makeCard(D3, 2)].every(c => EightBall.cardArt(c) === null && Shamrock7.cardArt(c) === null));
+    // These are joker-deck games too, so their joker gets the same jester as Joker Poker's.
+    check('both mark the joker with the jester',
+        EightBall.cardArt(WILD) === 'jester' && Shamrock7.cardArt(WILD) === 'jester');
     // Cross-check the art against the rank each game really pays the bonus on, so the two can't
     // drift apart: trips of the marked rank must land on that game's bonus tier.
     const tripsOf = (game, rank) => game.ranks[game.evalRank(extractFeatures(
