@@ -24,6 +24,9 @@ const D2 = 0, D3 = 1, D4 = 2, D5 = 3, N9 = 7, T = 8, J = 9, Q = 10, K = 11, A = 
 
 console.log('=== Jacks or Better ===');
 {
+    check('has a strategyPdf pointing at jacksOrBetter96.pdf', JacksOrBetter.strategyPdf?.href === 'jacksOrBetter96.pdf');
+}
+{
     const t0 = performance.now();
     // pat royal flush, spades
     const dealt = [makeCard(T, 3), makeCard(J, 3), makeCard(Q, 3), makeCard(K, 3), makeCard(A, 3)];

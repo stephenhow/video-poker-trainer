@@ -13,6 +13,7 @@ export const JacksOrBetter = {
     deck: standardDeck,
     ranks: RANKS,
     defaultPayouts: [0, 1, 2, 3, 4, 6, 9, 25, 50, 800],
+    strategyPdf: { href: 'jacksOrBetter96.pdf', label: 'Optimal strategy (PDF)' },
 
     evalRank(f) {
         if (isRF(f)) return ROYAL_FLUSH;
