@@ -78,6 +78,10 @@ button:disabled { opacity: 0.4; cursor: default; transform: none; }
 #paytable td:first-child { color: var(--text-dim); }
 #paytable td:last-child { text-align: right; }
 
+#strategy-download { margin: 12px 0 0; font-size: 0.85rem; }
+#strategy-download a { color: var(--accent); text-decoration: none; }
+#strategy-download a:hover { text-decoration: underline; }
+
 .stats { margin-top: 20px; }
 .stat-row { display: flex; justify-content: space-between; font-size: 0.85rem; padding: 3px 0; }
 .stat-row span:first-child { color: var(--text-dim); }
