@@ -7,7 +7,7 @@ import { JokerPoker } from './js/games/jokerPoker.js';
 import { DoubleDoubleBonus } from './js/games/doubleDoubleBonus.js';
 import { SuperAcesBonus } from './js/games/superAcesBonus.js';
 import { OneEyedJacks } from './js/games/oneEyedJacks.js';
-import { oneEyedJacksDeck, cardStr } from './js/poker.js';
+import { cardStr, oneEyedJacksDeck, makeJoker, isJoker, jokerTag, isWild } from './js/poker.js';
 
 const WILD = -1;
 let failures = 0;
@@ -335,19 +335,35 @@ console.log('\n=== Super Aces Bonus ===');
 }
 
 console.log('\n=== One-Eyed Jacks ===');
+const JOKER_H = makeJoker(2); // the joker tagged "hearts" -- displays as "J h Wild"
+const JOKER_S = makeJoker(3); // the joker tagged "spades" -- displays as "J s Wild"
 {
-    // Deck sanity: the Jack of hearts and Jack of spades are removed and replaced with 2 real
-    // Jokers -- Jc/Jd remain ordinary cards. NOTE: this means a *natural* royal flush is only
-    // possible in clubs or diamonds in this game (there's no Jack to complete one in hearts or
-    // spades) -- a real deck-construction detail worth testing directly, since it's exactly the
-    // kind of thing a hand-picked test card (e.g. using suit=hearts/spades for a royal-flush
-    // test) could accidentally deal a card that doesn't exist in this game at all.
+    // Deck sanity: the Jack of hearts and Jack of spades are removed and replaced with 2
+    // tagged jokers -- Jc/Jd remain ordinary cards. NOTE: this means a *natural* royal flush
+    // is only possible in clubs or diamonds in this game (there's no Jack to complete one in
+    // hearts or spades) -- a real deck-construction detail worth testing directly, since it's
+    // exactly the kind of thing a hand-picked test card (e.g. using suit=hearts/spades for a
+    // royal-flush test) could accidentally deal a card that doesn't exist in this game at all.
     const deck = oneEyedJacksDeck();
     check(`deck has 52 cards (${deck.length})`, deck.length === 52);
-    check(`deck has exactly 2 wilds (${deck.filter(c => c === WILD).length})`, deck.filter(c => c === WILD).length === 2);
-    const realCards = deck.filter(c => c !== WILD).map(cardStr);
+    const wilds = deck.filter(isWild);
+    check(`deck has exactly 2 wilds (${wilds.length})`, wilds.length === 2);
+    check('the 2 wilds are the tagged hearts/spades jokers, not identical', wilds.includes(JOKER_H) && wilds.includes(JOKER_S) && JOKER_H !== JOKER_S);
+    const realCards = deck.filter(c => !isWild(c)).map(cardStr);
     check('deck has no Jh or Js', !realCards.includes('Jh') && !realCards.includes('Js'));
     check('deck still has Jc and Jd', realCards.includes('Jc') && realCards.includes('Jd'));
+}
+{
+    // wildLabel differentiates the 2 jokers by their tag, distinct from every other wild
+    // game's single shared label -- this is the actual feature being tested here.
+    check('isJoker recognizes both tagged jokers', isJoker(JOKER_H) && isJoker(JOKER_S));
+    check('isJoker rejects an ordinary card (Jc)', !isJoker(makeCard(J, 0)));
+    check('jokerTag distinguishes hearts from spades', jokerTag(JOKER_H) === 2 && jokerTag(JOKER_S) === 3);
+    const hLabel = OneEyedJacks.wildLabel(JOKER_H);
+    const sLabel = OneEyedJacks.wildLabel(JOKER_S);
+    check(`hearts joker labeled "J"+"h Wild" (got "${hLabel.rank}"+"${hLabel.suit}")`, hLabel.rank === 'J' && hLabel.suit === 'h Wild');
+    check(`spades joker labeled "J"+"s Wild" (got "${sLabel.rank}"+"${sLabel.suit}")`, sLabel.rank === 'J' && sLabel.suit === 's Wild');
+    check('wildLabel returns null for an ordinary card (Jc)', OneEyedJacks.wildLabel(makeCard(J, 0)) === null);
 }
 {
     // pat natural royal flush -- must be clubs or diamonds (see deck note above)
@@ -358,7 +374,7 @@ console.log('\n=== One-Eyed Jacks ===');
 }
 {
     // 1 joker + 4 suited royal cards -> wild royal, guaranteed
-    const dealt = [WILD, makeCard(J, 1), makeCard(Q, 1), makeCard(K, 1), makeCard(A, 1)];
+    const dealt = [JOKER_H, makeCard(J, 1), makeCard(Q, 1), makeCard(K, 1), makeCard(A, 1)];
     const { bestMask, bestEv } = evaluateAllMasks(OneEyedJacks, dealt, OneEyedJacks.defaultPayouts);
     check('wild royal: best mask is hold-all (31)', bestMask === 31);
     check('wild royal: EV is exactly 150', approx(bestEv, 150));
@@ -366,7 +382,7 @@ console.log('\n=== One-Eyed Jacks ===');
 {
     // 2 jokers + 3 real cards, all distinct trip-of-8s -> guaranteed five of a kind (can't be
     // improved on), so holding pat is genuinely optimal here.
-    const dealt = [WILD, WILD, makeCard(4, 0), makeCard(4, 1), makeCard(4, 2)];
+    const dealt = [JOKER_H, JOKER_S, makeCard(4, 0), makeCard(4, 1), makeCard(4, 2)];
     const { bestMask, bestEv } = evaluateAllMasks(OneEyedJacks, dealt, OneEyedJacks.defaultPayouts);
     check('2 jokers + trips: best mask is hold-all (31)', bestMask === 31);
     check('2 jokers + trips: EV is exactly 75 (five of a kind)', approx(bestEv, 75));
@@ -375,7 +391,7 @@ console.log('\n=== One-Eyed Jacks ===');
     // 2 jokers + 3 distinct-rank real cards -> guaranteed three of a kind (pays only 1), but
     // NOT optimal to hold pat: discarding 1 of the 3 dead singles for a fresh draw is a real
     // shot at pairing up into quads. Same weak-made-hand reasoning as the other wildcard games.
-    const dealt = [WILD, WILD, makeCard(3, 0), makeCard(7, 1), makeCard(K, 2)];
+    const dealt = [JOKER_H, JOKER_S, makeCard(3, 0), makeCard(7, 1), makeCard(K, 2)];
     const { masks, bestEv } = evaluateAllMasks(OneEyedJacks, dealt, OneEyedJacks.defaultPayouts);
     check('2 jokers + 3 distinct: holding all 5 pays exactly 1 (three of a kind)', approx(masks[31].ev, 1));
     check('2 jokers + 3 distinct: best play redraws for a higher EV than holding pat', bestEv > masks[31].ev);
@@ -387,7 +403,7 @@ console.log('\n=== One-Eyed Jacks ===');
     // matter are the other two 8s (8h, 8s) -- either upgrades to five of a kind (75); every one
     // of the other 45 possible draws still keeps four of a kind (15) since the wilds + real pair
     // always complete quads regardless of the redrawn card's rank.
-    const dealt = [WILD, WILD, makeCard(6, 0), makeCard(6, 1), makeCard(7, 2)];
+    const dealt = [JOKER_H, JOKER_S, makeCard(6, 0), makeCard(6, 1), makeCard(7, 2)];
     const { masks, bestEv } = evaluateAllMasks(OneEyedJacks, dealt, OneEyedJacks.defaultPayouts);
     check('2 jokers + pair: holding all 5 pays exactly 15 (four of a kind)', approx(masks[31].ev, 15));
     const holdPair = masks[0b11110]; // hold both jokers + the pair of 8s, discard the singleton

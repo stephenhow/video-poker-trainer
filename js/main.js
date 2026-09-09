@@ -1,4 +1,4 @@
-import { shuffle, cardHtml, isWild, cardStr } from './poker.js';
+import { shuffle, cardHtml, cardStr, defaultWildLabel } from './poker.js';
 import { evaluateAllMasks, applyMask } from './engine.js';
 import { extractFeatures } from './handFeatures.js';
 import { GAMES } from './games/index.js';
@@ -80,8 +80,11 @@ function makeCardDiv(card, { held = false, isBack = false, drawn = false, intera
     if (isBack) {
         div.setAttribute('aria-label', 'face-down card');
     } else {
-        div.innerHTML = cardHtml(card, game.wildLabel) + (drawn ? '<span class="badge">drawn</span>' : '');
-        div.setAttribute('aria-label', (isWild(card) ? 'Wild' : cardStr(card)) + (held ? ', held' : ''));
+        const wildLabelFn = game.wildLabel || defaultWildLabel;
+        div.innerHTML = cardHtml(card, wildLabelFn) + (drawn ? '<span class="badge">drawn</span>' : '');
+        const label = wildLabelFn(card);
+        const ariaLabel = label ? `${label.rank} ${label.suit}`.trim() : cardStr(card);
+        div.setAttribute('aria-label', ariaLabel + (held ? ', held' : ''));
     }
     if (interactive) {
         div.setAttribute('role', 'button');

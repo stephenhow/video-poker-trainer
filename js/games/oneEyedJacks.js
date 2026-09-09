@@ -1,9 +1,14 @@
-import { oneEyedJacksDeck } from '../poker.js';
+import { oneEyedJacksDeck, jokerTag } from '../poker.js';
 import { isQuints, isRF, isSF, isQuads, isFH, isFlush, isStr, is3K, pairsCnt, hasJoker } from '../handFeatures.js';
 
 // Rank order matches the C++ engine's OneEyedJacksPayTable enum (more_games.h). The Jack of
-// hearts and Jack of spades are removed from the deck and replaced with 2 real Jokers, so up
-// to 2 wilds can appear in a single hand -- unlike Joker Poker's single-joker deck.
+// hearts and Jack of spades are removed from the deck and replaced with 2 jokers -- tagged
+// hearts and spades respectively (see oneEyedJacksDeck/jokerTag in poker.js) purely so they
+// can be displayed as 2 distinguishable cards ("J h Wild" / "J s Wild") instead of 2 identical
+// generic wilds. The tag has no effect on hand evaluation, which is otherwise unchanged from
+// a plain 2-wild-joker deck.
+const HEARTS = 2, SPADES = 3;
+
 const RANKS = ['Nothing', 'Two Pair', 'Three of a Kind', 'Straight', 'Flush', 'Full House',
     'Four of a Kind', 'Straight Flush', 'Five of a Kind', 'Wild Royal Flush', 'Natural Royal Flush'];
 const NOTHING = 0, TWO_PAIRS = 1, THREE_OF_A_KIND = 2, STRAIGHT = 3, FLUSH = 4, FULL_HOUSE = 5,
@@ -15,7 +20,12 @@ export const OneEyedJacks = {
     deck: oneEyedJacksDeck,
     ranks: RANKS,
     defaultPayouts: [0, 1, 1, 2, 3, 5, 15, 45, 75, 150, 800],
-    wildLabel: { rank: '', suit: 'Wild' }, // 2 real Jokers, not a wild rank
+    wildLabel: (card) => {
+        const tag = jokerTag(card);
+        if (tag === HEARTS) return { rank: 'J', suit: 'h Wild' };
+        if (tag === SPADES) return { rank: 'J', suit: 's Wild' };
+        return null;
+    },
 
     evalRank(f) {
         if (isQuints(f)) return FIVE_OF_A_KIND;

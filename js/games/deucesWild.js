@@ -1,4 +1,4 @@
-import { deucesWildDeck } from '../poker.js';
+import { deucesWildDeck, isWild } from '../poker.js';
 import { isNRoyal, isNStraight, isNSuitedStraight, quadsCnt, tripsCnt, pairsCnt } from '../handFeatures.js';
 
 // Rank order matches the C++ engine's DeucesWildPayTable enum.
@@ -61,7 +61,7 @@ export const DeucesWild = {
     deck: deucesWildDeck,
     ranks: RANKS,
     defaultPayouts: [0, 1, 2, 3, 4, 4, 9, 15, 25, 200, 800],
-    wildLabel: { rank: '2', suit: 'Wild' },
+    wildLabel: (card) => (isWild(card) ? { rank: '2', suit: 'Wild' } : null),
 
     evalRank(f) {
         switch (f.jokerCnt) {
