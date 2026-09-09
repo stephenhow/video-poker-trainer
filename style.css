@@ -160,6 +160,28 @@ main { display: flex; flex-direction: column; align-items: center; gap: 18px; }
 .card.back.just-revealed { animation: reveal 0.25s ease; }
 @keyframes reveal { from { transform: scaleX(0); } to { transform: scaleX(1); } }
 
+/* Bonus-rank watermarks: Shamrock 7s marks every dealt seven with a shamrock, 8-Ball marks
+   every dealt eight with an 8-ball (see main.js's data-bonus-art hook). These sit in the card's
+   background layer, so the rank and suit paint over them and stay fully legible. Each shape is
+   drawn inside a single <g opacity>, rather than per-shape fill-opacity, so overlapping parts
+   don't composite into darker seams. Placed after .card.back so a face-down card can never
+   pick one up. */
+.card[data-bonus-art] {
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: 95%;
+}
+/* Trefoil centered on the card's middle, with a short straight stem -- a longer curved stem
+   pulled the shape's visual mass down and left of the rank/suit above it. */
+.card[data-bonus-art="shamrock"] {
+    background-image: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><g opacity='0.24' fill='%232e9e4f' stroke='%232e9e4f'><circle cx='50' cy='31' r='21' stroke='none'/><circle cx='32' cy='60' r='21' stroke='none'/><circle cx='68' cy='60' r='21' stroke='none'/><path d='M50 74 L50 88' fill='none' stroke-width='8' stroke-linecap='round'/></g></svg>");
+}
+/* The ball deliberately carries no numeral of its own: it only ever appears behind an eight,
+   so the card's own rank lands in the white label and reads as the ball's number. */
+.card[data-bonus-art="eight-ball"] {
+    background-image: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><g opacity='0.18'><circle cx='50' cy='50' r='47' fill='%23111111'/><circle cx='50' cy='50' r='29' fill='%23ffffff'/></g></svg>");
+}
+
 #controls { display: flex; gap: 12px; }
 
 #outcome-banner {

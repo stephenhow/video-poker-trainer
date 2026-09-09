@@ -9,5 +9,6 @@ export const Shamrock7 = makeRankBonusGame({
     plural: 'Sevens',
     bonus: 12.1,
     jackpot: 930,
+    art: 'shamrock',
     strategyPdf: { href: 'shamrock7.pdf', label: 'Optimal strategy (PDF)' },
 });

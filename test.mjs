@@ -725,6 +725,16 @@ console.log('\n=== 8-Ball ===');
     check('deck is the 53-card joker deck', EightBall.deck().length === 53);
     check('does not share its ranks/payouts arrays with Shamrock 7s',
         EightBall.ranks !== Shamrock7.ranks && EightBall.defaultPayouts !== Shamrock7.defaultPayouts);
+
+    // Watermark art: main.js tags cards of the bonus rank with data-bonus-art so style.css can
+    // draw a shamrock behind sevens / an 8-ball behind eights. The art's rank has to track the
+    // rank that actually pays the bonus, or the watermark lands on the wrong cards.
+    check('8-Ball art is the 8-ball, keyed to the eights', EightBall.bonusArt.id === 'eight-ball' && EightBall.bonusArt.rank === N8);
+    check('Shamrock 7s art is the shamrock, keyed to the sevens', Shamrock7.bonusArt.id === 'shamrock' && Shamrock7.bonusArt.rank === N7);
+    const tripsOfArtRank = (game) => game.ranks[game.evalRank(extractFeatures(
+        [makeCard(game.bonusArt.rank, 0), makeCard(game.bonusArt.rank, 1), makeCard(game.bonusArt.rank, 2), makeCard(K, 0), makeCard(D3, 1)]))];
+    check('trips of the art rank pays the bonus tier in each game',
+        tripsOfArtRank(EightBall) === 'Three Eights' && tripsOfArtRank(Shamrock7) === 'Three Sevens');
 }
 {
     const pay = (name) => EightBall.defaultPayouts[EightBall.ranks.indexOf(name)];

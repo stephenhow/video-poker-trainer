@@ -10,5 +10,6 @@ export const EightBall = makeRankBonusGame({
     plural: 'Eights',
     bonus: 12.6,
     jackpot: 825,
+    art: 'eight-ball',
     strategyPdf: { href: '8ball.pdf', label: 'Optimal strategy (PDF)' },
 });

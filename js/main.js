@@ -1,4 +1,4 @@
-import { shuffle, cardHtml, cardStr, defaultWildLabel } from './poker.js';
+import { shuffle, cardHtml, cardStr, defaultWildLabel, isWild, rankOf } from './poker.js';
 import { evaluateAllMasks, applyMask } from './engine.js';
 import { extractFeatures } from './handFeatures.js';
 import { GAMES } from './games/index.js';
@@ -103,6 +103,11 @@ function makeCardDiv(card, { held = false, isBack = false, drawn = false, intera
         const label = wildLabelFn(card);
         const ariaLabel = label ? [label.rank, label.suit, 'Wild'].filter(Boolean).join(' ') : cardStr(card);
         div.setAttribute('aria-label', ariaLabel + (held ? ', held' : ''));
+        // Games that pay a bonus on one rank (Shamrock 7s' sevens, 8-Ball's eights) watermark
+        // those cards -- style.css keys the artwork off this attribute. Decorative only.
+        if (game.bonusArt && !isWild(card) && rankOf(card) === game.bonusArt.rank) {
+            div.dataset.bonusArt = game.bonusArt.id;
+        }
     }
     if (interactive) {
         div.setAttribute('role', 'button');

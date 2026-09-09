@@ -12,7 +12,7 @@ import {
 //
 // Mirrors the C++ engine's Shamrock7PayTable/setShamrock7Rank (pot_of_gold.h/.cpp) with the
 // bonus rank, bonus amount and jackpot lifted out as parameters.
-export function makeRankBonusGame({ id, name, bonusRank, plural, bonus, jackpot, strategyPdf }) {
+export function makeRankBonusGame({ id, name, bonusRank, plural, bonus, jackpot, art, strategyPdf }) {
     // Rank order matches the C++ Shamrock7PayTable enum.
     const RANKS = ['Nothing', 'Two Pair', 'Three of a Kind', `Three ${plural}`, 'Straight', 'Flush',
         'Full House', `${plural} Full`, 'Four of a Kind', `Four ${plural}`, 'Straight Flush',
@@ -56,6 +56,10 @@ export function makeRankBonusGame({ id, name, bonusRank, plural, bonus, jackpot,
         ],
         wildLabel: (card) => (isWild(card) ? { rank: '', suit: '' } : null), // a real Joker
         strategyPdf,
+        // Watermark art for the cards that carry the bonus, so a dealt seven/eight is obvious
+        // at a glance. main.js tags matching cards with data-bonus-art="<id>"; style.css
+        // supplies the image. Purely decorative -- it has no effect on evaluation.
+        bonusArt: { id: art, rank: bonusRank },
 
         evalRank(f) {
             // The C++ writes this first test as `hasJoker() && getQuadsCnt()`; with a
