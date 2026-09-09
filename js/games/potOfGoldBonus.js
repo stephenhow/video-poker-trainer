@@ -37,6 +37,7 @@ export function makeRankBonusGame({ id, name, bonusRank, plural, bonus, jackpot,
         id,
         name,
         deck: jokerDeck,
+        group: 'Pot-of-Gold', // shows under a labeled separator in the game picker
         ranks: RANKS,
         defaultPayouts: [
             0,                    // Nothing

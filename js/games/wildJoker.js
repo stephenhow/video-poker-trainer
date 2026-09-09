@@ -20,6 +20,7 @@ export const WildJoker = {
     id: 'wildJoker',
     name: 'Wild Joker',
     deck: jokerDeck,
+    group: 'Pot-of-Gold', // groups with Shamrock 7s / 8-Ball in the game picker
     ranks: RANKS,
     defaultPayouts: [0, 1, 1, 2, 3, 5, 8, 15, 50, 100, 1140],
     wildLabel: (card) => (isWild(card) ? { rank: '', suit: '' } : null), // a real Joker, not a wild-rank card

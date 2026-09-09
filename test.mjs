@@ -13,6 +13,7 @@ import { OneEyedJacks } from './js/games/oneEyedJacks.js';
 import { WildJoker } from './js/games/wildJoker.js';
 import { Shamrock7 } from './js/games/shamrock7.js';
 import { EightBall } from './js/games/eightBall.js';
+import { GAMES } from './js/games/index.js';
 import { extractFeatures } from './js/handFeatures.js';
 import { cardStr, oneEyedJacksDeck, makeJoker, isJoker, jokerTag, isWild } from './js/poker.js';
 
@@ -593,6 +594,24 @@ const JOKER_S = makeJoker(3); // the joker tagged "spades" -- displays as a blac
     const { masks, bestEv } = evaluateAllMasks(OneEyedJacks, dealt, OneEyedJacks.defaultPayouts);
     check('two pair: holding all 5 pays exactly 1', approx(masks[31].ev, 1));
     check('two pair: best play redraws for a higher EV than holding pat', bestEv > masks[31].ev);
+}
+
+console.log('\n=== Game picker grouping ===');
+{
+    // Games declaring a `group` render inside a labeled <optgroup> in the picker. Members of a
+    // group have to sit together in GAMES: buildGameSelect() opens a group when the label
+    // changes and closes it when it changes back, so a member separated from the rest would
+    // silently produce two headings with the same label.
+    const potOfGold = ['Wild Joker', 'Shamrock 7s', '8-Ball'];
+    check('the Pot-of-Gold games all declare the group',
+        GAMES.filter(g => potOfGold.includes(g.name)).every(g => g.group === 'Pot-of-Gold'));
+    check('no other game declares a group',
+        GAMES.filter(g => !potOfGold.includes(g.name)).every(g => g.group === undefined));
+    const indices = GAMES.map((g, i) => (g.group === 'Pot-of-Gold' ? i : -1)).filter(i => i >= 0);
+    check(`grouped games are contiguous in GAMES (${indices.join(',')})`,
+        indices.length === potOfGold.length && indices[indices.length - 1] - indices[0] === indices.length - 1);
+    check('the group sits at the end, so ungrouped games come first',
+        indices[indices.length - 1] === GAMES.length - 1);
 }
 
 console.log('\n=== Wild Joker ===');

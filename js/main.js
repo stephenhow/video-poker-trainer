@@ -32,8 +32,25 @@ const stats = { hands: 0, optimal: 0, evLost: 0, credits: 0 };
 function fmt(n, d = 3) { return n.toFixed(d); }
 function isHeld(i) { return ((heldMask >> (4 - i)) & 1) === 1; }
 
+// Games that declare a `group` are wrapped in a labeled <optgroup>, which the browser renders
+// as a non-selectable heading separating them from what came before -- currently the
+// Pot O' Gold cabinet games. Option values stay the GAMES index either way, so grouping is
+// purely presentational. Games sharing a group need to be adjacent in GAMES, or they'd render
+// as two separate headings with the same label (see test.mjs).
 function buildGameSelect() {
-    gameSelect.innerHTML = GAMES.map((g, i) => `<option value="${i}">${g.name}</option>`).join('');
+    let html = '';
+    let openGroup = null;
+    GAMES.forEach((g, i) => {
+        const group = g.group || null;
+        if (group !== openGroup) {
+            if (openGroup) html += '</optgroup>';
+            if (group) html += `<optgroup label="${group}">`;
+            openGroup = group;
+        }
+        html += `<option value="${i}">${g.name}</option>`;
+    });
+    if (openGroup) html += '</optgroup>';
+    gameSelect.innerHTML = html;
 }
 
 function renderPaytable() {
