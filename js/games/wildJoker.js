@@ -23,6 +23,9 @@ export const WildJoker = {
     ranks: RANKS,
     defaultPayouts: [0, 1, 1, 2, 3, 5, 8, 15, 50, 100, 1140],
     wildLabel: (card) => (isWild(card) ? { rank: '', suit: '' } : null), // a real Joker, not a wild-rank card
+    // The joker is the whole point of these games, so give it a dancing jester
+    // watermark (see style.css's [data-card-art]); every other card renders plain.
+    cardArt: (card) => (isWild(card) ? 'jester' : null),
     strategyPdf: { href: 'wildJoker.pdf', label: 'Optimal strategy (PDF)' },
 
     evalRank(f) {

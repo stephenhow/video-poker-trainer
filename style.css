@@ -160,26 +160,34 @@ main { display: flex; flex-direction: column; align-items: center; gap: 18px; }
 .card.back.just-revealed { animation: reveal 0.25s ease; }
 @keyframes reveal { from { transform: scaleX(0); } to { transform: scaleX(1); } }
 
-/* Bonus-rank watermarks: Shamrock 7s marks every dealt seven with a shamrock, 8-Ball marks
-   every dealt eight with an 8-ball (see main.js's data-bonus-art hook). These sit in the card's
-   background layer, so the rank and suit paint over them and stay fully legible. Each shape is
-   drawn inside a single <g opacity>, rather than per-shape fill-opacity, so overlapping parts
-   don't composite into darker seams. Placed after .card.back so a face-down card can never
-   pick one up. */
-.card[data-bonus-art] {
+/* Card watermarks (see main.js's cardArt/data-card-art hook): Shamrock 7s marks every dealt
+   seven with a shamrock, 8-Ball every dealt eight with an 8-ball, and the joker games mark the
+   joker itself with a dancing jester. These sit in the card's background layer, so the rank and
+   suit paint over them and stay fully legible. Each shape is drawn inside a single <g opacity>,
+   rather than per-shape fill-opacity, so overlapping parts don't composite into darker seams.
+   Placed after .card.back so a face-down card can never pick one up. */
+.card[data-card-art] {
     background-repeat: no-repeat;
     background-position: center;
     background-size: 95%;
 }
 /* Trefoil centered on the card's middle, with a short straight stem -- a longer curved stem
    pulled the shape's visual mass down and left of the rank/suit above it. */
-.card[data-bonus-art="shamrock"] {
+.card[data-card-art="shamrock"] {
     background-image: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><g opacity='0.24' fill='%232e9e4f' stroke='%232e9e4f'><circle cx='50' cy='31' r='21' stroke='none'/><circle cx='32' cy='60' r='21' stroke='none'/><circle cx='68' cy='60' r='21' stroke='none'/><path d='M50 74 L50 88' fill='none' stroke-width='8' stroke-linecap='round'/></g></svg>");
 }
 /* The ball deliberately carries no numeral of its own: it only ever appears behind an eight,
    so the card's own rank lands in the white label and reads as the ball's number. */
-.card[data-bonus-art="eight-ball"] {
+.card[data-card-art="eight-ball"] {
     background-image: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><g opacity='0.18'><circle cx='50' cy='50' r='47' fill='%23111111'/><circle cx='50' cy='50' r='29' fill='%23ffffff'/></g></svg>");
+}
+/* Dancing jester for the joker in Joker Poker / Wild Joker: filled cap lobes with bells rather
+   than thin lines (a stroked version read as a stick figure with antennae), and shifted up the
+   card so the kicking legs clear the gold "Wild" tag along the bottom. */
+.card[data-card-art="jester"] {
+    background-size: 88%;
+    background-position: center 38%;
+    background-image: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><g opacity='0.26' fill='%236b3fa0' stroke='%236b3fa0' stroke-width='9' stroke-linecap='round' stroke-linejoin='round'><g stroke='none'><path d='M37 40 Q50 22 63 40 Z'/><path d='M41 33 L15 17 L31 39 Z'/><path d='M43 29 L50 6 L57 29 Z'/><path d='M59 33 L85 19 L69 39 Z'/><circle cx='12' cy='15' r='5.5'/><circle cx='50' cy='5' r='5.5'/><circle cx='88' cy='18' r='5.5'/><circle cx='50' cy='41' r='11'/><path d='M42 52 L58 52 L67 74 L58 70 L50 78 L42 70 L33 74 Z'/><circle cx='21' cy='41' r='5'/><circle cx='81' cy='60' r='5'/><circle cx='35' cy='94' r='5'/><circle cx='76' cy='88' r='5'/></g><path d='M43 54 L23 43' fill='none'/><path d='M57 54 L79 59' fill='none'/><path d='M46 74 L37 92' fill='none'/><path d='M55 74 L73 86' fill='none'/></g></svg>");
 }
 
 #controls { display: flex; gap: 12px; }

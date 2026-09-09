@@ -726,15 +726,29 @@ console.log('\n=== 8-Ball ===');
     check('does not share its ranks/payouts arrays with Shamrock 7s',
         EightBall.ranks !== Shamrock7.ranks && EightBall.defaultPayouts !== Shamrock7.defaultPayouts);
 
-    // Watermark art: main.js tags cards of the bonus rank with data-bonus-art so style.css can
-    // draw a shamrock behind sevens / an 8-ball behind eights. The art's rank has to track the
+    // Watermark art: main.js tags cards with data-card-art from game.cardArt(card) so style.css
+    // can draw a shamrock behind sevens / an 8-ball behind eights. The art has to follow the
     // rank that actually pays the bonus, or the watermark lands on the wrong cards.
-    check('8-Ball art is the 8-ball, keyed to the eights', EightBall.bonusArt.id === 'eight-ball' && EightBall.bonusArt.rank === N8);
-    check('Shamrock 7s art is the shamrock, keyed to the sevens', Shamrock7.bonusArt.id === 'shamrock' && Shamrock7.bonusArt.rank === N7);
-    const tripsOfArtRank = (game) => game.ranks[game.evalRank(extractFeatures(
-        [makeCard(game.bonusArt.rank, 0), makeCard(game.bonusArt.rank, 1), makeCard(game.bonusArt.rank, 2), makeCard(K, 0), makeCard(D3, 1)]))];
-    check('trips of the art rank pays the bonus tier in each game',
-        tripsOfArtRank(EightBall) === 'Three Eights' && tripsOfArtRank(Shamrock7) === 'Three Sevens');
+    check('8-Ball marks its eights with the 8-ball', EightBall.cardArt(makeCard(N8, 0)) === 'eight-ball');
+    check('Shamrock 7s marks its sevens with the shamrock', Shamrock7.cardArt(makeCard(N7, 0)) === 'shamrock');
+    check('neither marks the other game\'s bonus rank',
+        EightBall.cardArt(makeCard(N7, 0)) === null && Shamrock7.cardArt(makeCard(N8, 0)) === null);
+    check('ordinary ranks and the joker go unmarked',
+        [makeCard(K, 0), makeCard(A, 1), makeCard(D3, 2), WILD].every(c => EightBall.cardArt(c) === null && Shamrock7.cardArt(c) === null));
+    // Cross-check the art against the rank each game really pays the bonus on, so the two can't
+    // drift apart: trips of the marked rank must land on that game's bonus tier.
+    const tripsOf = (game, rank) => game.ranks[game.evalRank(extractFeatures(
+        [makeCard(rank, 0), makeCard(rank, 1), makeCard(rank, 2), makeCard(K, 0), makeCard(D3, 1)]))];
+    check('trips of the marked rank pays the bonus tier in each game',
+        tripsOf(EightBall, N8) === 'Three Eights' && tripsOf(Shamrock7, N7) === 'Three Sevens');
+}
+{
+    // The joker games watermark the joker itself with a dancing jester, and nothing else.
+    for (const game of [JokerPoker, WildJoker]) {
+        check(`${game.name}: marks the joker with the jester`, game.cardArt(WILD) === 'jester');
+        check(`${game.name}: leaves ordinary cards unmarked`,
+            [makeCard(A, 0), makeCard(N7, 1), makeCard(N8, 2), makeCard(K, 3)].every(c => game.cardArt(c) === null));
+    }
 }
 {
     const pay = (name) => EightBall.defaultPayouts[EightBall.ranks.indexOf(name)];

@@ -1,4 +1,4 @@
-import { jokerDeck, isWild } from '../poker.js';
+import { jokerDeck, isWild, rankOf } from '../poker.js';
 import {
     isQuints, isRF, isSF, isQuads, isFH, isFlush, isStr, is3K,
     quadsCnt, quadRank, tripsCnt, tripRank, pairsCnt, pairRank, hasJoker,
@@ -57,9 +57,9 @@ export function makeRankBonusGame({ id, name, bonusRank, plural, bonus, jackpot,
         wildLabel: (card) => (isWild(card) ? { rank: '', suit: '' } : null), // a real Joker
         strategyPdf,
         // Watermark art for the cards that carry the bonus, so a dealt seven/eight is obvious
-        // at a glance. main.js tags matching cards with data-bonus-art="<id>"; style.css
+        // at a glance. main.js tags matching cards with data-card-art="<id>"; style.css
         // supplies the image. Purely decorative -- it has no effect on evaluation.
-        bonusArt: { id: art, rank: bonusRank },
+        cardArt: (card) => (!isWild(card) && rankOf(card) === bonusRank ? art : null),
 
         evalRank(f) {
             // The C++ writes this first test as `hasJoker() && getQuadsCnt()`; with a
