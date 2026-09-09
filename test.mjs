@@ -12,6 +12,7 @@ import { DoubleBonus } from './js/games/doubleBonus.js';
 import { OneEyedJacks } from './js/games/oneEyedJacks.js';
 import { WildJoker } from './js/games/wildJoker.js';
 import { Shamrock7 } from './js/games/shamrock7.js';
+import { EightBall } from './js/games/eightBall.js';
 import { extractFeatures } from './js/handFeatures.js';
 import { cardStr, oneEyedJacksDeck, makeJoker, isJoker, jokerTag, isWild } from './js/poker.js';
 
@@ -24,7 +25,7 @@ function check(label, cond) {
 function approx(a, b, eps = 1e-9) { return Math.abs(a - b) < eps; }
 
 // rank helpers: 0=Deuce..8=Ten,9=Jack,10=Queen,11=King,12=Ace ; suit: 0=c,1=d,2=h,3=s
-const D2 = 0, D3 = 1, D4 = 2, D5 = 3, N7 = 5, N9 = 7, T = 8, J = 9, Q = 10, K = 11, A = 12;
+const D2 = 0, D3 = 1, D4 = 2, D5 = 3, N7 = 5, N8 = 6, N9 = 7, T = 8, J = 9, Q = 10, K = 11, A = 12;
 
 console.log('=== Jacks or Better ===');
 {
@@ -702,6 +703,61 @@ console.log('\n=== Shamrock 7s ===');
     const { bestMask: pMask, bestEv: pEv } = evaluateAllMasks(Shamrock7, plainFull, Shamrock7.defaultPayouts);
     check('plain full house: best mask is hold-all (31)', pMask === 31);
     check('plain full house: EV is exactly 8', approx(pEv, pay('Full House')));
+}
+
+console.log('\n=== 8-Ball ===');
+{
+    // 8-Ball is Shamrock 7s with the bonus moved from sevens to eights, a bigger bonus (12.6
+    // vs 12.1) and a correspondingly lower break-even jackpot (825 vs 930). Both are built
+    // from the same makeRankBonusGame factory, so confirm the parameterization landed and the
+    // two games are genuinely independent (no shared rank/payout arrays).
+    const pay = (game, name) => game.defaultPayouts[game.ranks.indexOf(name)];
+    const BONUS = 12.6;
+    check('Three Eights = Three of a Kind + 12.6', approx(pay(EightBall, 'Three Eights') - pay(EightBall, 'Three of a Kind'), BONUS));
+    check('Eights Full = Full House + 12.6', approx(pay(EightBall, 'Eights Full') - pay(EightBall, 'Full House'), BONUS));
+    check('Four Eights = Four of a Kind + 12.6', approx(pay(EightBall, 'Four Eights') - pay(EightBall, 'Four of a Kind'), BONUS));
+    check('Five Eights = Five of a Kind + 12.6', approx(pay(EightBall, 'Five Eights') - pay(EightBall, 'Five of a Kind'), BONUS));
+    check('jackpot is 825 (lower break-even than Shamrock 7s\' 930)', approx(pay(EightBall, 'Five of a Kind'), 825));
+    check('base categories match Shamrock 7s (Royal 100, SF 50, quads 15, FH 8, flush 5, straight 3)',
+        ['Royal Flush', 'Straight Flush', 'Four of a Kind', 'Full House', 'Flush', 'Straight', 'Three of a Kind', 'Two Pair']
+            .every(n => pay(EightBall, n) === pay(Shamrock7, n)));
+    check('has a strategyPdf pointing at 8ball.pdf', EightBall.strategyPdf?.href === '8ball.pdf');
+    check('deck is the 53-card joker deck', EightBall.deck().length === 53);
+    check('does not share its ranks/payouts arrays with Shamrock 7s',
+        EightBall.ranks !== Shamrock7.ranks && EightBall.defaultPayouts !== Shamrock7.defaultPayouts);
+}
+{
+    const pay = (name) => EightBall.defaultPayouts[EightBall.ranks.indexOf(name)];
+
+    // the two quints tiers: eights pay the bonus on top of the jackpot, anything else doesn't
+    const eights = [WILD, makeCard(N8, 0), makeCard(N8, 1), makeCard(N8, 2), makeCard(N8, 3)];
+    const { bestMask: eMask, bestEv: eEv } = evaluateAllMasks(EightBall, eights, EightBall.defaultPayouts);
+    check('joker + 4 eights: best mask is hold-all (31)', eMask === 31);
+    check('joker + 4 eights: EV is the Five Eights jackpot (837.6)', approx(eEv, pay('Five Eights')));
+
+    const aces = [WILD, makeCard(A, 0), makeCard(A, 1), makeCard(A, 2), makeCard(A, 3)];
+    const { bestEv: aEv } = evaluateAllMasks(EightBall, aces, EightBall.defaultPayouts);
+    check('joker + 4 aces: EV is the plain Five of a Kind jackpot (825)', approx(aEv, pay('Five of a Kind')));
+}
+{
+    // Same joker-chase as Shamrock 7s: a made quad is not pat-optimal while the joker is live.
+    const pay = (name) => EightBall.defaultPayouts[EightBall.ranks.indexOf(name)];
+    const dealt = [makeCard(N8, 0), makeCard(N8, 1), makeCard(N8, 2), makeCard(N8, 3), makeCard(K, 0)];
+    const { masks, bestEv } = evaluateAllMasks(EightBall, dealt, EightBall.defaultPayouts);
+    check('four eights: holding all 5 pays exactly 27.6 (Four Eights)', approx(masks[31].ev, pay('Four Eights')));
+    check('four eights: discarding the kicker to chase the joker beats holding pat', bestEv > masks[31].ev);
+}
+{
+    // The bonus keys off the *set* being eights -- and sevens are now just an ordinary rank.
+    const rank = (dealt) => EightBall.ranks[EightBall.evalRank(extractFeatures(dealt))];
+    check('888 + KK is Eights Full', rank([makeCard(N8, 0), makeCard(N8, 1), makeCard(N8, 2), makeCard(K, 0), makeCard(K, 1)]) === 'Eights Full');
+    check('KKK + 88 is a plain Full House (eights are only the pair)', rank([makeCard(K, 0), makeCard(K, 1), makeCard(K, 2), makeCard(N8, 0), makeCard(N8, 1)]) === 'Full House');
+    check('777 + KK is a plain Full House here (sevens carry no bonus in 8-Ball)', rank([makeCard(N7, 0), makeCard(N7, 1), makeCard(N7, 2), makeCard(K, 0), makeCard(K, 1)]) === 'Full House');
+    check('joker + KK + 88 is Eights Full (eights are pairs[0])', rank([WILD, makeCard(K, 0), makeCard(K, 1), makeCard(N8, 2), makeCard(N8, 3)]) === 'Eights Full');
+    check('joker + 33 + 88 is Eights Full (eights are pairs[1])', rank([WILD, makeCard(D3, 0), makeCard(D3, 1), makeCard(N8, 2), makeCard(N8, 3)]) === 'Eights Full');
+    check('joker + pair of eights is Three Eights', rank([WILD, makeCard(N8, 0), makeCard(N8, 1), makeCard(K, 0), makeCard(N9, 1)]) === 'Three Eights');
+    check('trip sevens is a plain Three of a Kind here', rank([makeCard(N7, 0), makeCard(N7, 1), makeCard(N7, 2), makeCard(K, 0), makeCard(N9, 1)]) === 'Three of a Kind');
+    check('four eights (no joker) is Four Eights', rank([makeCard(N8, 0), makeCard(N8, 1), makeCard(N8, 2), makeCard(N8, 3), makeCard(K, 0)]) === 'Four Eights');
 }
 
 console.log(failures === 0 ? '\nAll checks passed.' : `\n${failures} check(s) FAILED.`);
