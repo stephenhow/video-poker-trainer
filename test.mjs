@@ -8,6 +8,7 @@ import { JokerPoker } from './js/games/jokerPoker.js';
 import { DoubleDoubleBonus } from './js/games/doubleDoubleBonus.js';
 import { TripleDoubleBonus } from './js/games/tripleDoubleBonus.js';
 import { SuperAcesBonus } from './js/games/superAcesBonus.js';
+import { DoubleBonus } from './js/games/doubleBonus.js';
 import { OneEyedJacks } from './js/games/oneEyedJacks.js';
 import { cardStr, oneEyedJacksDeck, makeJoker, isJoker, jokerTag, isWild } from './js/poker.js';
 
@@ -437,6 +438,53 @@ console.log('\n=== Super Aces Bonus ===');
     const nines = [makeCard(N9, 0), makeCard(N9, 1), makeCard(D2, 2), makeCard(D5, 3), makeCard(6, 0)];
     const { masks: ninesMasks } = evaluateAllMasks(SuperAcesBonus, nines, SuperAcesBonus.defaultPayouts);
     check('pair of nines (below jacks): holding all 5 pays exactly 0 (Nothing, not Jacks-or-Better)', approx(ninesMasks[31].ev, 0));
+}
+
+console.log('\n=== Double Bonus ===');
+{
+    // Double Bonus is Super Aces Bonus with 2 payouts changed (Full House 6->7, Four 2s/3s/4s
+    // 80->100) -- confirm the schedule and that it's genuinely reusing Super Aces Bonus's
+    // deck/evalRank rather than a re-derived copy.
+    const dropChanged = (payouts, ranks) => payouts.map((v, i) =>
+        (['Full House', 'Four 2s, 3s or 4s'].includes(ranks[i]) ? null : v));
+    check('payouts match Super Aces Bonus except the 2 boosted categories',
+        JSON.stringify(dropChanged(DoubleBonus.defaultPayouts, DoubleBonus.ranks)) ===
+        JSON.stringify(dropChanged(SuperAcesBonus.defaultPayouts, SuperAcesBonus.ranks)));
+    check('Full House payout is 7 (not Super Aces\' 6)', DoubleBonus.defaultPayouts[DoubleBonus.ranks.indexOf('Full House')] === 7);
+    check('Four 2s,3s,4s payout is 100 (not Super Aces\' 80)', DoubleBonus.defaultPayouts[DoubleBonus.ranks.indexOf('Four 2s, 3s or 4s')] === 100);
+    check('reuses SuperAcesBonus.evalRank directly', DoubleBonus.evalRank === SuperAcesBonus.evalRank);
+    check('reuses SuperAcesBonus.deck directly', DoubleBonus.deck === SuperAcesBonus.deck);
+    check('has no strategyPdf yet (none exists for this game)', DoubleBonus.strategyPdf === undefined);
+}
+{
+    // pat royal flush -- unaffected by the payout changes, sanity check the shared evalRank
+    const dealt = [makeCard(T, 3), makeCard(J, 3), makeCard(Q, 3), makeCard(K, 3), makeCard(A, 3)];
+    const { bestMask, bestEv } = evaluateAllMasks(DoubleBonus, dealt, DoubleBonus.defaultPayouts);
+    check('natural royal: best mask is hold-all (31)', bestMask === 31);
+    check('natural royal: EV is exactly 800', approx(bestEv, 800));
+}
+{
+    // Inherited from Super Aces Bonus: no kicker sub-bonus at any quad tier, so the payout is
+    // flat per quad rank and holding pat exactly ties with discarding the kicker to redraw --
+    // check the EV only, not which mask wins the tie.
+    const low = [makeCard(D4, 0), makeCard(D4, 1), makeCard(D4, 2), makeCard(D4, 3), makeCard(K, 0)];
+    const { bestEv: lowEv } = evaluateAllMasks(DoubleBonus, low, DoubleBonus.defaultPayouts);
+    check('four 4s: EV is exactly 100 (up from Super Aces\' 80)', approx(lowEv, 100));
+
+    const aces = [makeCard(A, 0), makeCard(A, 1), makeCard(A, 2), makeCard(A, 3), makeCard(K, 0)];
+    const { bestEv: acesEv } = evaluateAllMasks(DoubleBonus, aces, DoubleBonus.defaultPayouts);
+    check('four aces: EV is exactly 400 (unchanged)', approx(acesEv, 400));
+
+    const mid = [makeCard(N9, 0), makeCard(N9, 1), makeCard(N9, 2), makeCard(N9, 3), makeCard(K, 0)];
+    const { bestEv: midEv } = evaluateAllMasks(DoubleBonus, mid, DoubleBonus.defaultPayouts);
+    check('four 9s: EV is exactly 50 (unchanged)', approx(midEv, 50));
+}
+{
+    // pat full house -- genuinely optimal to hold, now paying the boosted 7
+    const dealt = [makeCard(6, 0), makeCard(6, 1), makeCard(6, 2), makeCard(9, 3), makeCard(9, 0)];
+    const { bestMask, bestEv } = evaluateAllMasks(DoubleBonus, dealt, DoubleBonus.defaultPayouts);
+    check('full house: best mask is hold-all (31)', bestMask === 31);
+    check('full house: EV is exactly 7 (up from Super Aces\' 6)', approx(bestEv, 7));
 }
 
 console.log('\n=== One-Eyed Jacks ===');
