@@ -15,4 +15,5 @@ export const DoubleBonus = {
     id: 'doubleBonus',
     name: 'Double Bonus',
     defaultPayouts: payouts,
+    strategyPdf: { href: 'doubleBonus9911.pdf', label: 'Optimal strategy (PDF)' },
 };
