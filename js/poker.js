@@ -17,9 +17,9 @@ export function makeJoker(tag) { return makeCard(JOKER_RANK, tag); }
 export function isJoker(card) { return rankOf(card) === JOKER_RANK; }
 export function jokerTag(card) { return isJoker(card) ? suitOf(card) : null; }
 
-const RANK_CHARS = ['2', '3', '4', '5', '6', '7', '8', '9', 'T', 'J', 'Q', 'K', 'A'];
+export const RANK_CHARS = ['2', '3', '4', '5', '6', '7', '8', '9', 'T', 'J', 'Q', 'K', 'A'];
 const SUIT_CHARS = ['c', 'd', 'h', 's'];
-const SUIT_SYMBOLS = ['♣', '♦', '♥', '♠']; // club, diamond, heart, spade
+export const SUIT_SYMBOLS = ['♣', '♦', '♥', '♠']; // club, diamond, heart, spade
 const RANK_NAMES = ['Deuce', 'Trey', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten', 'Jack', 'Queen', 'King', 'Ace'];
 
 export function makeCard(rank, suit) { return rank * 4 + suit; }
@@ -109,6 +109,36 @@ export function shuffle(arr) {
         [arr[i], arr[j]] = [arr[j], arr[i]];
     }
     return arr;
+}
+
+// A card's *displayed* rank/suit under a game's wildLabelFn -- for a plain card this is just
+// its raw rank/suit, but a wild card that renders as e.g. "2"+suit (Deuces Wild) or "J"+suit
+// (One-Eyed Jacks) reports that instead. `r` comes back null for a card with no displayed rank
+// at all (a plain joker, e.g. Joker Poker/Wild Joker/Pot O' Gold); `s` comes back null whenever
+// the card has no displayed suit (any plain joker, or a wild whose label omits one).
+export function displayRankSuit(card, wildLabelFn) {
+    const label = wildLabelFn(card);
+    if (!label) return { r: rankOf(card), s: suitOf(card) };
+    if (!label.rank) return { r: null, s: null };
+    const r = RANK_CHARS.indexOf(label.rank);
+    const s = label.suit ? SUIT_SYMBOLS.indexOf(label.suit) : -1;
+    return { r, s: s === -1 ? null : s };
+}
+
+// Reverse-maps a game's deck by displayed rank/suit (see displayRankSuit) so the UI can ask
+// "what card in this deck displays as rank R, suit S?" without knowing anything about how any
+// particular game's wild cards work. Cards with no displayed rank (a plain joker) come back
+// separately as `jokerCard` since they have no (rank, suit) slot to sit in.
+export function buildCardIndex(deck, wildLabelFn) {
+    const byRankSuit = new Map(); // `${rank}-${suit}` -> card
+    let jokerCard = null;
+    for (const card of deck) {
+        const { r, s } = displayRankSuit(card, wildLabelFn);
+        if (r === null) { jokerCard = card; continue; }
+        if (s === null) { jokerCard = card; continue; }
+        byRankSuit.set(`${r}-${s}`, card);
+    }
+    return { byRankSuit, jokerCard };
 }
 
 export function removeCards(deck, cards) {

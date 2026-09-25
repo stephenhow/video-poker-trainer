@@ -1,4 +1,7 @@
-import { shuffle, cardHtml, cardStr, defaultWildLabel } from './poker.js';
+import {
+    shuffle, cardHtml, cardStr, defaultWildLabel, buildCardIndex, displayRankSuit,
+    RANK_CHARS, SUIT_SYMBOLS,
+} from './poker.js';
 import { evaluateAllMasks, applyMask } from './engine.js';
 import { extractFeatures } from './handFeatures.js';
 import { GAMES } from './games/index.js';
@@ -17,6 +20,7 @@ const feedbackEl = el('feedback');
 const feedbackHeadline = el('feedback-headline');
 const feedbackDetail = el('feedback-detail');
 const maskTableEl = el('mask-table');
+const yourHandHintEl = el('your-hand-hint');
 
 let game = GAMES[0];
 let payouts = game.defaultPayouts.slice();
@@ -26,6 +30,7 @@ let phase = 'idle';      // 'idle' | 'holding' | 'result'
 let resultCards = null;  // held cards + newly-drawn replacements, set once Draw is pressed
 let handOutcome = null;  // {rank, payout} of the drawn hand, as actually paid at draw time
 let analysisTimer = null; // debounce for re-analysing after a pay table edit
+let openPopoverEl = null; // the currently-open rank/suit edit popover, if any (see attachEditing)
 
 const stats = { hands: 0, optimal: 0, evLost: 0, credits: 0 };
 
@@ -103,6 +108,8 @@ function switchGame(index) {
 
 function resetHand() {
     clearTimeout(analysisTimer); // don't let a queued re-analysis fire against a cleared hand
+    closeOpenPopover();
+    yourHandHintEl.textContent = '(click a card to hold it)';
     dealt = [];
     heldMask = 0;
     phase = 'idle';
@@ -148,11 +155,15 @@ function makeCardDiv(card, { held = false, isBack = false, drawn = false, intera
     return div;
 }
 
-// The selector row always shows the original dealt hand, unchanged for the whole round --
-// this is what the player clicks to hold/discard, and what they can compare their choice
-// against afterward without it having been altered by the draw.
+// The selector row shows the original dealt hand -- this is what the player clicks to
+// hold/discard pre-draw, and what they compare their choice against afterward. Once the draw
+// has happened it stops being clickable for hold/discard, but instead becomes rank/suit
+// editable (see attachEditing) so the player can explore "what if I'd been dealt this instead"
+// against the Hold/EV table.
 function renderSelectorCards() {
     selectorCardsEl.innerHTML = '';
+    const wildLabelFn = game.wildLabel || defaultWildLabel;
+    const cardIndex = phase === 'result' ? buildCardIndex(game.deck(), wildLabelFn) : null;
     for (let i = 0; i < 5; i++) {
         const held = isHeld(i);
         const toggle = () => {
@@ -160,10 +171,97 @@ function renderSelectorCards() {
             renderSelectorCards();
             renderPlayCards();
         };
-        selectorCardsEl.appendChild(makeCardDiv(dealt[i], {
+        const div = makeCardDiv(dealt[i], {
             held, interactive: phase === 'holding', onToggle: toggle,
-        }));
+        });
+        if (cardIndex) attachEditing(div, i, wildLabelFn, cardIndex);
+        selectorCardsEl.appendChild(div);
     }
+}
+
+function closeOpenPopover() {
+    if (openPopoverEl) { openPopoverEl.remove(); openPopoverEl = null; }
+}
+
+// Wires up the post-draw "what-if" editor on one "Your hand" card: hovering (or tapping, for
+// touch) its rank pops a horizontal rank selector (2 thru A, plus "Joker" for games whose deck
+// has a plain wild -- see buildCardIndex), and hovering its suit pops a horizontal suit
+// selector (clubs thru spades). Picking an option edits `dealt[i]` in place and re-runs the
+// analysis, as if the hand had been dealt that way. No duplicate-card guard: if a pick would
+// mirror another card already in the hand, it's allowed anyway and the EV numbers just come out
+// meaningless for that mask.
+function attachEditing(div, i, wildLabelFn, cardIndex) {
+    const { r, s } = displayRankSuit(dealt[i], wildLabelFn);
+
+    const rankTrigger = r === null ? div.querySelector('.wild-tag') : div.querySelector('.rank');
+    if (rankTrigger) {
+        const options = RANK_CHARS.map((ch, idx) => ({ value: idx, label: ch }));
+        if (cardIndex.jokerCard !== null) options.push({ value: 'JOKER', label: 'Joker' });
+        // Sits just above the rank (or, for a Joker, the "Wild" tag) it edits -- 'above' keeps
+        // the popover close enough that the cursor doesn't cross empty space and lose hover.
+        attachTrigger(rankTrigger, div, i, options, r === null ? 'JOKER' : r, 'above', (val) => {
+            const suit = s === null ? 0 : s; // converting away from the Joker defaults to clubs
+            const next = val === 'JOKER' ? cardIndex.jokerCard : cardIndex.byRankSuit.get(`${val}-${suit}`);
+            if (next !== undefined && next !== null) { dealt[i] = next; afterHandEdit(); }
+        });
+    }
+
+    if (s !== null) {
+        const suitTrigger = div.querySelector('.suit');
+        if (suitTrigger) {
+            const options = SUIT_SYMBOLS.map((sym, idx) => ({ value: idx, label: sym }));
+            // Sits just below the suit, for the same reason the rank popover sits just above.
+            attachTrigger(suitTrigger, div, i, options, s, 'below', (val) => {
+                const next = cardIndex.byRankSuit.get(`${r}-${val}`);
+                if (next !== undefined) { dealt[i] = next; afterHandEdit(); }
+            });
+        }
+    }
+
+    div.addEventListener('mouseleave', closeOpenPopover);
+}
+
+// Opens on hover (mouseenter) and on click (so it also works with no mouse, e.g. touch).
+// `slotIndex` is 0/4 for the leftmost/rightmost card so the popover aligns to that edge instead
+// of centering off the edge of the hand. `placement` ('above'/'below') is positioned in JS,
+// right against the trigger's own actual on-card position (via its offsetTop/offsetHeight),
+// rather than the whole card -- the rank and suit sit at different heights within the card, and
+// anchoring off the card as a whole left too big a gap for the cursor to cross before the
+// popover closed.
+function attachTrigger(triggerEl, cardDiv, slotIndex, options, currentValue, placement, onPick) {
+    triggerEl.classList.add('edit-trigger');
+    const open = () => {
+        closeOpenPopover();
+        const pop = document.createElement('div');
+        pop.className = 'edit-popover' + (slotIndex === 0 ? ' align-left' : slotIndex === 4 ? ' align-right' : '');
+        options.forEach(opt => {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'popover-opt' + (opt.value === currentValue ? ' current' : '');
+            btn.textContent = opt.label;
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                closeOpenPopover();
+                onPick(opt.value);
+            });
+            pop.appendChild(btn);
+        });
+        cardDiv.appendChild(pop);
+        const gap = 4;
+        if (placement === 'below') {
+            pop.style.top = `${triggerEl.offsetTop + triggerEl.offsetHeight + gap}px`;
+        } else {
+            pop.style.bottom = `${cardDiv.offsetHeight - triggerEl.offsetTop + gap}px`;
+        }
+        openPopoverEl = pop;
+    };
+    triggerEl.addEventListener('mouseenter', open);
+    triggerEl.addEventListener('click', (e) => { e.stopPropagation(); open(); });
+}
+
+function afterHandEdit() {
+    renderSelectorCards();
+    renderAnalysis();
 }
 
 // The play row mirrors the selector: held cards flip face-up immediately, everything else
@@ -184,11 +282,13 @@ function renderPlayCards() {
 }
 
 function dealHand() {
+    closeOpenPopover();
     const deck = shuffle(game.deck());
     dealt = deck.slice(0, 5);
     heldMask = 0;
     phase = 'holding';
     resultCards = null;
+    yourHandHintEl.textContent = '(click a card to hold it)';
     feedbackEl.classList.add('hidden');
     outcomeBannerEl.classList.add('hidden');
     outcomeBannerEl.textContent = '';
@@ -259,6 +359,7 @@ function doDraw() {
     phase = 'result';
     dealBtn.disabled = false;
     drawBtn.disabled = true;
+    yourHandHintEl.textContent = '(hover a rank or suit to edit)';
     renderSelectorCards();
     renderPlayCards();
 
@@ -313,6 +414,13 @@ gameSelect.addEventListener('change', () => switchGame(Number(gameSelect.value))
 dealBtn.addEventListener('click', dealHand);
 drawBtn.addEventListener('click', doDraw);
 el('reset-stats').addEventListener('click', resetStats);
+// Closes a rank/suit edit popover on a click anywhere outside it -- needed since the popover
+// also opens on click (for touch input), not just hover.
+document.addEventListener('click', (e) => {
+    if (openPopoverEl && !openPopoverEl.contains(e.target) && !e.target.classList.contains('edit-trigger')) {
+        closeOpenPopover();
+    }
+});
 
 buildGameSelect();
 renderPaytable();

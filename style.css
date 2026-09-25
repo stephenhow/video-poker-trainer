@@ -160,6 +160,50 @@ main { display: flex; flex-direction: column; align-items: center; gap: 18px; }
 .card.back.just-revealed { animation: reveal 0.25s ease; }
 @keyframes reveal { from { transform: scaleX(0); } to { transform: scaleX(1); } }
 
+/* Rank/suit "what-if" editor: only active on "Your hand" cards after the draw (see
+   attachEditing in main.js). Hovering or tapping a card's rank or suit pops a row of buttons
+   above the card; picking one edits that card in place and refreshes the Hold/EV table as if
+   the hand had been dealt that way. */
+.card .rank.edit-trigger, .card .suit.edit-trigger, .card .wild-tag.edit-trigger {
+    cursor: pointer;
+    text-decoration: underline dotted rgba(255,255,255,0.55);
+    text-underline-offset: 3px;
+}
+/* top/bottom is set inline per-popover (see attachTrigger in main.js), anchored to the actual
+   rank/suit trigger's own position within the card rather than the card as a whole. */
+.edit-popover {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    flex-wrap: wrap;
+    width: max-content;
+    max-width: 220px;
+    gap: 2px;
+    padding: 4px;
+    background: var(--panel);
+    border: 1px solid var(--panel-border);
+    border-radius: 6px;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.4);
+    z-index: 20;
+}
+.edit-popover.align-left { left: 0; transform: none; }
+.edit-popover.align-right { left: auto; right: 0; transform: none; }
+.popover-opt {
+    min-width: 24px;
+    padding: 4px 5px;
+    font-size: 0.8rem;
+    font-weight: 700;
+    font-family: inherit;
+    color: #eee;
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 4px;
+    cursor: pointer;
+}
+.popover-opt:hover { background: rgba(255,255,255,0.15); }
+.popover-opt.current { border-color: var(--accent); color: var(--accent); }
+
 /* Card watermarks (see main.js's cardArt/data-card-art hook): Shamrock 7s marks every dealt
    seven with a shamrock, 8-Ball every dealt eight with an 8-ball, and the joker games mark the
    joker itself with a dancing jester. These sit in the card's background layer, so the rank and
